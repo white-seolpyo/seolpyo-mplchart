@@ -9,7 +9,9 @@ Ethereum: 0x1c5fb8a5e0b1153cd4116c91736bd16fabf83520
 
 [한글](https://white.seolpyo.com/entry/147/)
 
-# Sample
-![sample image](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/images/sample.gif?raw=true)
 
-![tkinter sample image](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/images/with%20tkinter.gif?raw=true)
+# Sample
+![sample image](https://raw.githubusercontent.com/white-seolpyo/seolpyo-mplchart/refs/heads/main/images/sample.gif)
+
+![tkinter sample image](https://raw.githubusercontent.com/white-seolpyo/seolpyo-mplchart/refs/heads/main/images/with%20tkinter.gif)
+
