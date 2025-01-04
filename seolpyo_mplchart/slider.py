@@ -96,9 +96,6 @@ class NavgatorMixin(Mixin):
 
         if self._navcoordinate[0] == self._navcoordinate[1]:
             self._navcoordinate = (self._navcoordinate[0], self._navcoordinate[1]+self.min_distance)
-
-        self.background = None
-        self._draw()
         return
 
 
@@ -108,19 +105,27 @@ class BackgroundMixin(NavgatorMixin):
         self._restore_region()
         return
 
-    def _restore_region(self, with_nav=True):
+    def _restore_region(self, with_nav=True, empty=False, empty_with_nav=False):
         if not self.background: self._create_background()
 
-        if with_nav: self.canvas.restore_region(self.background_with_nav)
+        if empty: self.canvas.restore_region(self.background_empty)
+        elif empty_with_nav: self.canvas.restore_region(self.background_empty_with_nav)
+        elif with_nav: self.canvas.restore_region(self.background_with_nav)
         else: self.canvas.renderer.restore_region(self.background)
         return
 
     def _copy_bbox(self):
-        self.ax_slider.xaxis.draw(self.canvas.renderer)
-        self.ax_slider.yaxis.draw(self.canvas.renderer)
-        self.slidercollection.draw(self.canvas.renderer)
+        renderer = self.canvas.renderer
 
-        super()._copy_bbox()
+        self.background_empty = renderer.copy_from_bbox(self.fig.bbox)
+
+        self.ax_slider.xaxis.draw(renderer)
+        self.ax_slider.yaxis.draw(renderer)
+        self.slidercollection.draw(renderer)
+        self.background_empty_with_nav = self.canvas.renderer.copy_from_bbox(self.fig.bbox)
+
+        self._draw_artist()
+        self.background = self.canvas.renderer.copy_from_bbox(self.fig.bbox)
 
         self.navigator.draw(self.canvas.renderer)
         self.background_with_nav = self.canvas.renderer.copy_from_bbox(self.fig.bbox)
@@ -158,15 +163,14 @@ class DrawMixin(BackgroundMixin):
         return
 
     def _on_release(self, e: MouseEvent):
-        if e.inaxes is not self.ax_slider: return
-        self.is_click, self.is_move = (False, False)
-
-        if self._navcoordinate[0] == self._navcoordinate[1]:
-            self._navcoordinate = (self._navcoordinate[0], self._navcoordinate[1]+self.min_distance)
+        super()._on_release(e)
         self._set_navigator(*self._navcoordinate)
 
-        self.background = None
-        self._draw()
+        self._restore_region(empty=True)
+        self._creating_background = False
+        self._create_background()
+        self._restore_region()
+        self._blit()
         return
 
     def _on_move(self, e: MouseEvent):
@@ -238,27 +242,6 @@ class DrawMixin(BackgroundMixin):
 
 
 class LimMixin(DrawMixin):
-    def _restore_region(self, with_nav=True, empty=False):
-        if not self.background: self._create_background()
-
-        if empty: self.canvas.restore_region(self.background_empty)
-        elif with_nav: self.canvas.restore_region(self.background_with_nav)
-        else: self.canvas.renderer.restore_region(self.background)
-        return
-
-    def _copy_bbox(self):
-        self.ax_slider.xaxis.draw(self.canvas.renderer)
-        self.ax_slider.yaxis.draw(self.canvas.renderer)
-        self.slidercollection.draw(self.canvas.renderer)
-        self.background_empty = self.canvas.renderer.copy_from_bbox(self.fig.bbox)
-
-        self._draw_artist()
-        self.background = self.canvas.renderer.copy_from_bbox(self.fig.bbox)
-
-        self.navigator.draw(self.canvas.renderer)
-        self.background_with_nav = self.canvas.renderer.copy_from_bbox(self.fig.bbox)
-        return
-
     def _on_release(self, e: MouseEvent):
         if e.inaxes is not self.ax_slider: return
         self.is_click, self.is_move = (False, False)
@@ -268,12 +251,14 @@ class LimMixin(DrawMixin):
         self._set_navigator(*self._navcoordinate)
         self._lim()
 
-        self.background = None
-        self._draw()
+        self._restore_region(empty=True)
+        self._creating_background = False
+        self._create_background()
+        self._blit()
         return
 
     def _on_move(self, e):
-        self._restore_region(with_nav=(not self.is_click), empty=self.is_click)
+        self._restore_region(with_nav=(not self.is_click), empty_with_nav=self.is_click)
 
         self._on_move_action(e)
 
@@ -329,7 +314,7 @@ class LimMixin(DrawMixin):
 
 class SimpleMixin(LimMixin):
     simpler = False
-    limit_volume = 2_000
+    limit_volume = 1_500
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -351,7 +336,7 @@ class SimpleMixin(LimMixin):
         seg = self.df[['x', self.high, self.low]].agg(get_wickline, axis=1)
         self.blitcandle.set_segments(seg)
         self.blitcandle.set_edgecolor(self.df['edgecolor'])
-        self.priceline.set_verts([self.df[['x', self.close]].apply(tuple, axis=1).tolist()])
+        self.priceline.set_verts(pd.array([self.df[['x', self.close]].apply(tuple, axis=1).to_list()]))
 
         volmax = self.df[self.volume].max()
         l = self.df.__len__()
@@ -381,12 +366,20 @@ class SimpleMixin(LimMixin):
         self.ax_price.xaxis.draw(renderer)
         self.ax_price.yaxis.draw(renderer)
 
-        if self.simpler: self.blitcandle.draw(renderer)
+        left, right = self._navcoordinate
+        Range = right - left
+        if self.simpler:
+            if Range < 1_000: self.blitcandle.draw(renderer)
+            else: self.priceline.draw(renderer)
         elif self.candle_on_ma:
             self.macollection.draw(renderer)
-            self.candlecollection.draw(renderer)
+            if 2_500 < Range: self.priceline.draw(renderer)
+            elif 800 < Range or 9_999 < self.xmax: self.blitcandle.draw(renderer)
+            else: self.candlecollection.draw(renderer)
         else:
-            self.candlecollection.draw(renderer)
+            if 2_500 < Range: self.priceline.draw(renderer)
+            elif 800 < Range or 9_999 < self.xmax: self.blitcandle.draw(renderer)
+            else: self.candlecollection.draw(renderer)
             self.macollection.draw(renderer)
 
         self.ax_volume.xaxis.draw(renderer)
@@ -436,12 +429,16 @@ class ClickMixin(SimpleMixin):
         if not self.is_click: return
         elif e.inaxes is self.ax_slider: return super()._on_release(e)
         elif not self.in_price and not self.in_volume and not self.is_click_chart: return
+        # 차트 click release action
         self.canvas.set_cursor(cursors.POINTER)
         self.is_click, self.is_move = (False, False)
         self.is_click_chart = False
 
-        self._draw()
-        return self._restore_region()
+        self._restore_region(empty=True)
+        self._creating_background = False
+        self._create_background()
+        self._blit()
+        return
 
     def _on_chart_click(self, e: MouseEvent):
         self.is_click = True
@@ -469,7 +466,7 @@ class ClickMixin(SimpleMixin):
         return
 
     def _on_move(self, e):
-        self._restore_region(with_nav=(not self.is_click), empty=self.is_click)
+        self._restore_region(with_nav=(not self.is_click), empty_with_nav=self.is_click)
 
         self._on_move_action(e)
 
@@ -594,6 +591,7 @@ if __name__ == '__main__':
     df = pd.DataFrame(data)
 
     t = time()
+    # c = SimpleMixin()
     c = SliderMixin()
     c.set_data(df)
     t2 = time() - t

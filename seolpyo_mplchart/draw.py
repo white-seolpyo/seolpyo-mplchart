@@ -54,7 +54,7 @@ class DataMixin(Base):
             if k in _set_key: raise Exception(f'you can not set "self.{i}" value in {_set_key}.\nself.{i}={k!r}')
             if i != 'date':
                 dtype = df[k].dtype
-                if not isinstance(dtype, np.dtypes.Float64DType): raise TypeError(f'Data column type must be "float64".(excluding "date" column)\ndf[{k!r}].dtype={dtype!r}')
+                if not isinstance(dtype, (np.dtypes.Float64DType, np.dtypes.Int64DType, np.dtypes.Float32DType, np.dtypes.Int32DType)): raise TypeError(f'Data column type must be "float64" or "int64" or "float32" or "int32".(excluding "date" column)\ndf[{k!r}].dtype={dtype!r}')
 
         for i in self.list_ma: df[f'ma{i}'] = df[self.close].rolling(i).mean()
 
@@ -66,25 +66,25 @@ class DataMixin(Base):
         df['vleft'] = df['x'] - volumewidth_half
         df['vright'] = df['x'] + volumewidth_half
 
-        df['top'] = np.where(df['open'] <= df['close'], df['close'], df['open'])
-        df['top'] = np.where(df['close'] < df['open'], df['open'], df['close'])
-        df['bottom'] = np.where(df['open'] <= df['close'], df['open'], df['close'])
-        df['bottom'] = np.where(df['close'] < df['open'], df['close'], df['open'])
+        df['top'] = np.where(df[self.Open] <= df[self.close], df[self.close], df[self.Open])
+        df['top'] = np.where(df[self.close] < df[self.Open], df[self.Open], df[self.close])
+        df['bottom'] = np.where(df[self.Open] <= df[self.close], df[self.Open], df[self.close])
+        df['bottom'] = np.where(df[self.close] < df[self.Open], df[self.close], df[self.Open])
 
         # 양봉
         df.loc[:, ['facecolor', 'edgecolor']] = (self.color_up, self.color_up)
         if self.color_up != self.color_down:
             # 음봉
-            df.loc[df['close'] < df['open'], ['facecolor', 'edgecolor']] = (self.color_down, self.color_down)
+            df.loc[df[self.close] < df[self.Open], ['facecolor', 'edgecolor']] = (self.color_down, self.color_down)
         if self.color_up != self.color_flat:
             # 보합
-            df.loc[df['close'] == df['open'], ['facecolor', 'edgecolor']] = (self.color_flat, self.color_flat)
+            df.loc[df[self.close] == df[self.Open], ['facecolor', 'edgecolor']] = (self.color_flat, self.color_flat)
         if self.color_up != self.color_up_down:
             # 양봉(비우기)
-            df.loc[(df['facecolor'] == self.color_up) & (df['close'] < df['close'].shift(1)), 'facecolor'] = self.color_up_down
+            df.loc[(df['facecolor'] == self.color_up) & (df[self.close] < df[self.close].shift(1)), 'facecolor'] = self.color_up_down
         if self.color_down != self.color_down_up:
             # 음봉(비우기)
-            df.loc[(df['facecolor'] == self.color_down) & (df['close'].shift(1) < df['close']), ['facecolor']] = self.color_down_up
+            df.loc[(df['facecolor'] == self.color_down) & (df[self.close].shift(1) < df[self.close]), ['facecolor']] = self.color_down_up
 
         self.df = df
         return

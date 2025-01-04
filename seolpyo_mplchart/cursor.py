@@ -79,6 +79,34 @@ class DataMixin(CollectionMixin):
         df['rate_volume'] = ((df[self.volume] - df[self.volume].shift(1)) /  df[self.volume].shift(1) * 100).__round__(2).fillna(0)
         return
 
+    def set_text_coordante(self, vmin, vmax, pmin, pmax, volmax):
+        # 주가, 거래량 텍스트 x 위치
+        x_distance = (vmax - vmin) / 30
+        self.v0, self.v1 = (vmin + x_distance, vmax - x_distance)
+        self.text_price.set_x(self.v0)
+        self.text_volume.set_x(self.v0)
+
+        self.vmin, self.vmax = (vmin, vmax)
+        self.vmiddle = vmax - int((vmax - vmin) / 2)
+
+        psub = pmax - pmin
+        self.min_psub = psub / 12
+
+        # 주가 날짜 텍스트 y 위치
+        y = (psub) / 20 + pmin
+        self.text_date_price.set_y(y)
+        # 주가 정보 y 위치
+        y = pmax - (psub) / 20
+        self.text_price_info.set_y(y)
+
+        # 거래량 날짜 텍스트 y 위치
+        y = volmax * 0.85
+        self.text_date_volume.set_y(y)
+        # 거래량 정보 y 위치
+        self.text_volume_info.set_y(y)
+
+        return
+
 
 class LineMixin(DataMixin):
     in_slider, in_price, in_volume = (False, False, False)
@@ -172,8 +200,12 @@ class LineMixin(DataMixin):
         if self.in_index:
             intx = self.intx
             
-            high = self.df[self.high][intx] * 1.02
-            low = self.df[self.low][intx] * 0.98
+            h = self.df[self.high][intx]
+            l = self.df[self.low][intx]
+            sub = (h - l) / 2
+            if sub < self.min_psub: sub = self.min_psub
+            high = h + sub
+            low = l - sub
             if high < y or y < low: self._in_candle = False
             else:
                 self._in_candle = True
@@ -224,31 +256,6 @@ class InfoMixin(LineMixin):
         v = self.df[self.volume].max()
         self._length_text = len(f'{v:,}')
         self.set_text_coordante(self.xmin, self.xmax, self._price_ymin, self._price_ymax, self._vol_ymax)
-
-        return
-
-    def set_text_coordante(self, vmin, vmax, pmin, pmax, volmax):
-        # 주가, 거래량 텍스트 x 위치
-        x_distance = (vmax - vmin) / 30
-        self.v0, self.v1 = (vmin + x_distance, vmax - x_distance)
-        self.text_price.set_x(self.v0)
-        self.text_volume.set_x(self.v0)
-
-        self.vmin, self.vmax = (vmin, vmax)
-        self.vmiddle = vmax - int((vmax - vmin) / 2)
-
-        # 주가 날짜 텍스트 y 위치
-        y = (pmax - pmin) / 20 + pmin
-        self.text_date_price.set_y(y)
-        # 주가 정보 y 위치
-        y = pmax - (pmax - pmin) / 20
-        self.text_price_info.set_y(y)
-
-        # 거래량 날짜 텍스트 y 위치
-        y = volmax * 0.85
-        self.text_date_volume.set_y(y)
-        # 거래량 정보 y 위치
-        self.text_volume_info.set_y(y)
 
         return
 
@@ -424,7 +431,8 @@ if __name__ == '__main__':
     file = Path(__file__).parent / 'data/apple.txt'
     with open(file, 'r', encoding='utf-8') as txt:
         data = json.load(txt)
-    data = data[:100]
+    n = 2600
+    data = data[n:n+100]
     df = pd.DataFrame(data)
 
     t = time()
