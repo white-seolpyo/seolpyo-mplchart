@@ -18,3 +18,7 @@ Ethereum: 0x1c5fb8a5e0b1153cd4116c91736bd16fabf83520
 ![english sample](https://raw.githubusercontent.com/white-seolpyo/seolpyo-mplchart/refs/heads/main/images/change%20format.png)
 
 ![korean sample](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/images/sample%20kor.png?raw=true)
+
+![40,000 sample](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/images/40000.gif?raw=true)
+
+<img src="https://github.com/user-attachments/assets/f1732891-d458-4c2d-a6bf-a17a4c549af6">
