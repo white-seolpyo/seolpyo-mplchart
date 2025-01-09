@@ -9,10 +9,6 @@ from .base import Base
 
 
 class Mixin:
-    def generate_data(self, df):
-        "This function works after data generate process is done."
-        return
-
     def on_blit(self):
         "This function works after cavas.blit()."
         return
@@ -27,7 +23,7 @@ class Mixin:
         return
 
 
-_set_key = {'x', 'left', 'right', 'top', 'bottom',}
+_set_key = {'zero', 'x', 'left', 'right', 'top', 'bottom',}
 
 class DataMixin(Base):
     df: pd.DataFrame
@@ -41,30 +37,40 @@ class DataMixin(Base):
     # https://matplotlib.org/stable/gallery/color/named_colors.html
     list_macolor = ('darkred', 'fuchsia', 'olive', 'orange', 'navy', 'darkmagenta', 'limegreen', 'darkcyan',)
 
-    color_up = '#fe3032'
-    color_down = '#0095ff'
+    color_up, color_down = ('#fe3032', '#0095ff')
     color_flat = 'k'
-    color_up_down = 'w'
-    color_down_up = 'w'
+    color_up_down, color_down_up = ('w', 'w')
     colors_volume = '#1f77b4'
 
-    def _generate_data(self, df: pd.DataFrame):
-        for i in ['date', 'Open', 'high', 'low', 'close', 'volume']:
+    candlewidth_half, volumewidth_half = (0.3, 0.36)
+
+    def _generate_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, **_):
+        for i in ('date', 'Open', 'high', 'low', 'close', 'volume'):
             k: str = getattr(self, i)
             if k in _set_key: raise Exception(f'you can not set "self.{i}" value in {_set_key}.\nself.{i}={k!r}')
             if i != 'date':
                 dtype = df[k].dtype
-                if not isinstance(dtype, (np.dtypes.Float64DType, np.dtypes.Int64DType, np.dtypes.Float32DType, np.dtypes.Int32DType)): raise TypeError(f'Data column type must be "float64" or "int64" or "float32" or "int32".(excluding "date" column)\ndf[{k!r}].dtype={dtype!r}')
+                if not isinstance(dtype, (np.dtypes.Float64DType, np.dtypes.Int64DType, np.dtypes.Float32DType, np.dtypes.Int32DType)):
+                    raise TypeError(f'column dtype must be one of "float64" or "int64" or "float32" or "int32".(excluding "date" column)\ndf[{k!r}].dtype={dtype!r}')
 
-        for i in self.list_ma: df[f'ma{i}'] = df[self.close].rolling(i).mean()
+        # DataFrame 정렬
+        if sort_df:
+            df = df.sort_values([self.date]).reset_index()
 
-        candlewidth_half = 0.3
-        volumewidth_half = 0.36
+        if not self.list_ma: self.list_ma = tuple()
+        if calc_ma:
+            for i in self.list_ma: df[f'ma{i}'] = df[self.close].rolling(i).mean()
+        else:
+            keys = set(df.keys())
+            for i in self.list_ma:
+                if f'ma{i}' not in keys:
+                    raise Exception(f'"ma{i}" column not in DataFrame.\nadd column or set calc_ma=True.')
+
         df['x'] = df.index + 0.5
-        df['left'] = df['x'] - candlewidth_half
-        df['right'] = df['x'] + candlewidth_half
-        df['vleft'] = df['x'] - volumewidth_half
-        df['vright'] = df['x'] + volumewidth_half
+        df['left'] = df['x'] - self.candlewidth_half
+        df['right'] = df['x'] + self.candlewidth_half
+        df['vleft'] = df['x'] - self.volumewidth_half
+        df['vright'] = df['x'] + self.volumewidth_half
 
         df['top'] = np.where(df[self.Open] <= df[self.close], df[self.close], df[self.Open])
         df['top'] = np.where(df[self.close] < df[self.Open], df[self.Open], df[self.close])
@@ -72,7 +78,7 @@ class DataMixin(Base):
         df['bottom'] = np.where(df[self.close] < df[self.Open], df[self.close], df[self.Open])
 
         # 양봉
-        df.loc[:, ['facecolor', 'edgecolor']] = (self.color_up, self.color_up)
+        df.loc[:, ['zero', 'facecolor', 'edgecolor']] = (0, self.color_up, self.color_up)
         if self.color_up != self.color_down:
             # 음봉
             df.loc[df[self.close] < df[self.Open], ['facecolor', 'edgecolor']] = (self.color_down, self.color_down)
@@ -88,7 +94,6 @@ class DataMixin(Base):
 
         self.df = df
         return
-
 
 class CollectionMixin(DataMixin):
     color_sliderline = 'k'
@@ -123,57 +128,55 @@ class CollectionMixin(DataMixin):
 
         return
 
-    def _get_candlesegment(self, s: pd.Series):
-        v = s.values
-        segment = (
-            (v[0], v[3]), # 심지 상단
-            (v[0], v[5]), # 몸통 상단
-            (v[1], v[5]), # 몸통 상단 좌측
-            (v[1], v[6]), # 몸통 하단 좌측
-            (v[0], v[6]), # 몸통 하단
-            (v[0], v[4]), # 심지 하단
-            (v[0], v[6]), # 몸통 하단
-            (v[2], v[6]), # 몸통 하단 우측
-            (v[2], v[5]), # 몸통 상단 우측
-            (v[0], v[5]), # 몸통 상단
-        )
-        return segment
-
-    def _get_volumesegment(self, s: pd.Series):
-        v = s.values
-        segment = (
-            (v[0], 0), # 몸통 하단 좌측
-            (v[0], v[2]), # 몸통 상단 좌측
-            (v[1], v[2]), # 몸통 상단 우측
-            (v[1], 0), # 몸통 하단 우측
-        )
-        return segment
-
     def _set_collection(self):
-        self.df.loc[:, ['candlesegment']] = self.df[['x', 'left', 'right', self.high, self.low, 'top', 'bottom']].agg(self._get_candlesegment, axis=1)
-        self.df.loc[:, ['volumesegment']] = self.df[['vleft', 'vright', self.volume]].agg(self._get_volumesegment, axis=1)
+        candleseg = self.df[[
+            'x', self.high,
+            'x', 'top',
+            'left', 'top',
+            'left', 'bottom',
+            'x', 'bottom',
+            'x', self.low,
+            'x', 'bottom',
+            'right', 'bottom',
+            'right', 'top',
+            'x', 'top',
+        ]].values
+        candleseg = candleseg.reshape(candleseg.shape[0], 10, 2)
+
+        self.candlecollection.set_segments(candleseg)
+        self.candlecollection.set_facecolor(self.df['facecolor'].values)
+        self.candlecollection.set_edgecolor(self.df['edgecolor'].values)
+
+        volseg = self.df[[
+            'left', 'zero',
+            'left', self.volume,
+            'right', self.volume,
+            'right', 'zero',
+        ]].values
+        volseg = volseg.reshape(volseg.shape[0], 4, 2)
+
+        self.volumecollection.set_segments(volseg)
 
         self._set_macollection()
 
         # 가격이동평균선
-        segments = list(reversed(self._masegment.values()))
+        maseg = reversed(self._masegment.values())
         colors, widths = ([], [])
         for i in reversed(self._macolors.values()): (colors.append(i), widths.append(1))
-        self.macollection.set_segments(segments)
+        self.macollection.set_segments(maseg)
         self.macollection.set_edgecolor(colors)
 
         # 슬라이더 선형차트
-        segments.append(self.df[['x', self.close]].apply(tuple, axis=1).tolist())
+        keys = []
+        for i in reversed(self.list_ma):
+            keys.append('x')
+            keys.append(f'ma{i}')
+        sliderseg = self.df[keys + ['x', self.close]].values
+        sliderseg = sliderseg.reshape(sliderseg.shape[0], self.list_ma.__len__()+1, 2).swapaxes(0, 1)
         (colors.append(self.color_sliderline), widths.append(1.8))
-        self.slidercollection.set_segments(segments)
+        self.slidercollection.set_segments(sliderseg)
         self.slidercollection.set_edgecolor(colors)
         self.slidercollection.set_linewidth(widths)
-
-        self.candlecollection.set_segments(self.df['candlesegment'])
-        self.candlecollection.set_facecolor(self.df['facecolor'].values)
-        self.candlecollection.set_edgecolor(self.df['edgecolor'].values)
-
-        self.volumecollection.set_segments(self.df['volumesegment'])
         return
 
     def _set_macollection(self):
@@ -188,7 +191,10 @@ class CollectionMixin(DataMixin):
             try: c = self.list_macolor[n]
             except: c = self.color_sliderline
             self._macolors[i] = c
-            self._masegment[i] = self.df[['x', f'ma{i}']].apply(tuple, axis=1).tolist()
+            # seg = self.df['x', f'ma{i}'].values
+            seg = self.df.loc[self.df[f'ma{i}'] != np.nan, ['x', f'ma{i}']].values
+            # print(f'{seg[:5]=}')
+            self._masegment[i] = seg
 
             handles.append(Line2D([0, 1], [0, 1], color=c, linewidth=5, label=i))
             labels.append(self.label_ma.format(i))
@@ -300,25 +306,29 @@ class BackgroundMixin(CollectionMixin):
         self.canvas.renderer.restore_region(self.background)
         return
 
-
 class DrawMixin(BackgroundMixin):
-    def set_data(self, df: pd.DataFrame):
-        self._generate_data(df)
+    def set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, *_, **kwargs):
+        self._set_data(df, sort_df, calc_ma, change_lim, **kwargs)
+        return self.df
+
+    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, *_, **kwargs):
+        self._generate_data(df, sort_df, calc_ma, **kwargs)
         self._set_collection()
-        self._draw_collection()
+        self._draw_collection(change_lim)
         return
 
-    def _draw_collection(self):
+    def _draw_collection(self, change_lim=True):
         xmax = self.df['x'].values[-1] + 1
 
         xspace = xmax / 40
         self.xmin, self.xmax = (-xspace, xmax+xspace)
         # 슬라이더 xlim
         self.ax_slider.set_xlim(self.xmin, self.xmax)
-        # 주가 xlim
-        self.ax_price.set_xlim(self.xmin, self.xmax)
-        # 거래량 xlim
-        self.ax_volume.set_xlim(self.xmin, self.xmax)
+        if change_lim:
+            # 주가 xlim
+            self.ax_price.set_xlim(self.xmin, self.xmax)
+            # 거래량 xlim
+            self.ax_volume.set_xlim(self.xmin, self.xmax)
 
         ymin, ymax = (self.df[self.low].min(), self.df[self.high].max())
         ysub = (ymax - ymin) / 15
@@ -329,19 +339,15 @@ class DrawMixin(BackgroundMixin):
 
         # 주가 ylim
         self._price_ymin, self._price_ymax = (ymin-ysub, ymax+ysub)
-        self.ax_price.set_ylim(self._price_ymin, self._price_ymax)
+        if change_lim: self.ax_price.set_ylim(self._price_ymin, self._price_ymax)
 
         # 거래량 ylim
         self._vol_ymax = self.df[self.volume].max() * 1.2
-        self.ax_volume.set_ylim(0, self._vol_ymax)
+        if change_lim: self.ax_volume.set_ylim(0, self._vol_ymax)
         return
 
 
 class Chart(DrawMixin, Mixin):
-    def _generate_data(self, df):
-        super()._generate_data(df)
-        return self.generate_data(self.df)
-
     def _on_draw(self, e):
         super()._on_draw(e)
         return self.on_draw(e)

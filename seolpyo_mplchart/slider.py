@@ -21,6 +21,10 @@ class Mixin(CursorMixin):
     def on_release(self, e):
         "This function works if mouse button release event active."
         return
+    def draw_artist(self):
+        "This function works before canvas.blit()."
+        return
+
 
 class NavgatorMixin(Mixin):
     min_distance = 30
@@ -39,8 +43,8 @@ class NavgatorMixin(Mixin):
         self.ax_slider.add_artist(self.navigator)
         return
 
-    def set_data(self, df):
-        super().set_data(df)
+    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, calc_info=True):
+        super()._set_data(df, sort_df, calc_ma, change_lim, calc_info)
 
         # 네비게이터 라인 선택 영역
         xsub = self.xmax - self.xmin
@@ -152,13 +156,12 @@ class BackgroundMixin(NavgatorMixin):
 
 
 class DrawMixin(BackgroundMixin):
-    def set_data(self, df):
-        super().set_data(df)
+    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, calc_info=True):
+        super()._set_data(df, sort_df, calc_ma, change_lim, calc_info)
 
         # 네비게이터 높이 설정
-        if 0 < self._slider_ymin: ysub = self._slider_ymax
-        else: ysub = self._slider_ymax - self._slider_ymin
-        self._ymiddle = ysub / 2
+        ysub = self._slider_ymax - self._slider_ymin
+        self._ymiddle = self._slider_ymax - ysub / 2
         self.navigator.set_linewidth((ysub, 5))
         return
 
@@ -252,8 +255,8 @@ class LimMixin(DrawMixin):
         self._lim()
 
         self._restore_region(empty=True)
-        self._creating_background = False
-        self._create_background()
+        self._copy_bbox()
+        self._restore_region()
         self._blit()
         return
 
@@ -315,6 +318,7 @@ class LimMixin(DrawMixin):
 class SimpleMixin(LimMixin):
     simpler = False
     limit_volume = 1_500
+    default_left, default_right = (180, 10)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -330,35 +334,34 @@ class SimpleMixin(LimMixin):
         self.ax_volume.add_collection(self.blitvolume)
         return
 
-    def set_data(self, df):
-        super().set_data(df)
+    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, calc_info=True):
+        super()._set_data(df, sort_df, calc_ma, False, calc_info)
 
-        seg = self.df[['x', self.high, self.low]].agg(get_wickline, axis=1)
+        seg = self.df[['x', self.high, 'x', self.low]].values
+        seg = seg.reshape(seg.shape[0], 2, 2)
         self.blitcandle.set_segments(seg)
         self.blitcandle.set_edgecolor(self.df['edgecolor'])
-        self.priceline.set_verts(pd.array([self.df[['x', self.close]].apply(tuple, axis=1).to_list()]))
 
-        volmax = self.df[self.volume].max()
+        pseg = self.df[['x', self.close]].values
+        self.priceline.set_verts(pseg.reshape(1, *pseg.shape))
+
         l = self.df.__len__()
         if l < self.limit_volume:
-            volseg = self.df.loc[:, ['x', self.volume]].agg(get_volumeline, axis=1)
+            volseg = self.df.loc[:, ['x', 'zero', 'x', self.volume]].values
         else:
-            n, step = (1, 1 / self.limit_volume)
-            for _ in range(self.limit_volume):
-                n -= step
-                volmin = volmax * n
-                length = self.df.loc[volmin < self.df[self.volume]].__len__()
-                if self.limit_volume < length: break
-            
-            volseg = self.df.loc[volmin < self.df[self.volume], ['x', self.volume]].agg(get_volumeline, axis=1)
-        self.blitvolume.set_segments(volseg)
+            v = self.df[['x', 'zero', 'x', self.volume]].sort_values([self.volume], axis=0, ascending=False)
+            volseg = v[:self.limit_volume].values
 
-        index = self.df.index[-1]
-        if index < 120: self._navcoordinate = (int(self.xmin)-1, int(self.xmax)+1)
-        else: self._navcoordinate = (index-80, index+10)
+        self.blitvolume.set_segments(volseg.reshape(volseg.shape[0], 2, 2))
+
+        if change_lim:
+            index = self.df.index[-1]
+            if index < self.default_left + self.default_right: self._navcoordinate = (int(self.xmin)-1, int(self.xmax)+1)
+            else: self._navcoordinate = (index-self.default_left, index+self.default_right)
+
         self._set_navigator(*self._navcoordinate)
         self._lim()
-        return self._draw()
+        return 
 
     def _draw_blit_artist(self):
         renderer = self.canvas.renderer
@@ -435,8 +438,8 @@ class ClickMixin(SimpleMixin):
         self.is_click_chart = False
 
         self._restore_region(empty=True)
-        self._creating_background = False
-        self._create_background()
+        self._copy_bbox()
+        self._restore_region()
         self._blit()
         return
 
@@ -503,58 +506,6 @@ class SliderMixin(ClickMixin):
 
 
 class Chart(SliderMixin, CM, Mixin):
-    r"""
-    You can see the guidance document:
-        Korean: https://white.seolpyo.com/entry/147/
-        English: https://white.seolpyo.com/entry/148/
-
-    Variables:
-        unit_price, unit_volume: unit for price and volume. default ('원', '주').
-
-        figsize: figure size if you use plt.show(). default (12, 6).
-        ratio_ax_slider, ratio_ax_legend, ratio_ax_price, ratio_ax_volume: Axes ratio. default (3, 2, 18, 5).
-        adjust: figure adjust. default dict(top=0.95, bottom=0.05, left=0.01, right=0.93, wspace=0, hspace=0).
-        slider_top: ax_slider is located at the top or bottom. default True.
-        color_background: color of background. default '#fafafa'.
-        color_grid: color of grid. default '#d0d0d0'.
-
-        df: stock data.
-        date: date column key. default 'date'
-        Open, high, low, close: price column key. default ('open', 'high', 'low', 'close')
-        volume: volume column key. default 'volume'
-
-        label_ma: moving average legend label format. default '{}일선'
-        list_ma: Decide how many days to draw the moving average line. default (5, 20, 60, 120, 240)
-        list_macolor: Color the moving average line. If the number of colors is greater than the moving average line, black is applied. default ('darkred', 'fuchsia', 'olive', 'orange', 'navy', 'darkmagenta', 'limegreen', 'darkcyan',)
-
-        candle_on_ma: Decide whether to draw candles on the moving average line. default True
-        color_sliderline: Color of closing price line in ax_slider. default 'k'
-        color_navigatorline: Color of left and right dividing lines in selected area. default '#1e78ff'
-        color_navigator: Color of unselected area. default 'k'
-
-        color_up: The color of the candle. When the closing price is greater than the opening price. default '#fe3032'
-        color_down: The color of the candle. When the opening price is greater than the opening price. default '#0095ff'
-        color_flat: The color of the candle. WWhen the closing price is the same as the opening price. default 'k'
-        color_up_down: The color of the candle. If the closing price is greater than the opening price, but is lower than the previous day's closing price. default 'w'
-        color_down_up: The color of the candle. If the opening price is greater than the closing price, but is higher than the closing price of the previous day. default 'w'
-        colors_volume: The color of the volume bar. default '#1f77b4'
-
-        lineKwargs: Options applied to horizontal and vertical lines drawn along the mouse position. default dict(edgecolor='k', linewidth=1, linestyle='-')
-        textboxKwargs: Options that apply to the information text box. dufault dict(boxstyle='round', facecolor='w')
-
-        fraction: Decide whether to express information as a fraction. default False
-        candleformat: Candle information text format. default '{}\n\n종가:　 {}\n등락률: {}\n대비:　 {}\n시가:　 {}({})\n고가:　 {}({})\n저가:　 {}({})\n거래량: {}({})'
-        volumeformat: Volume information text format. default '{}\n\n거래량　　　: {}\n거래량증가율: {}'
-        digit_price, digit_volume: Number of decimal places expressed in informational text. default (0, 0)
-
-        min_distance: Minimum number of candles that can be selected with the slider. default 30
-        simpler: Decide whether to display candles simply when moving the chart. default False
-        limit_volume: Maximum number of volume bars drawn when moving the chart. default 2_000
-    """
-    def _generate_data(self, df):
-        super()._generate_data(df)
-        return self.generate_data(self.df)
-
     def _on_draw(self, e):
         super()._on_draw(e)
         return self.on_draw(e)
@@ -565,7 +516,10 @@ class Chart(SliderMixin, CM, Mixin):
 
     def _draw_artist(self):
         super()._draw_artist()
-        return self.create_background()
+        return self.draw_artist()
+    def _draw_blit_artist(self):
+        super()._draw_blit_artist()
+        return self.draw_artist()
 
     def _blit(self):
         super()._blit()
@@ -597,3 +551,4 @@ if __name__ == '__main__':
     t2 = time() - t
     print(f'{t2=}')
     plt.show()
+

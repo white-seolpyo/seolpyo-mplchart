@@ -11,9 +11,6 @@ from .utils import float_to_str
 
 
 class Mixin:
-    def create_background(self):
-        "This function works befor canvas.copy_from_bbox()."
-        return
     def on_draw(self, e):
         "This function works if draw event active."
         return
@@ -64,19 +61,29 @@ class CollectionMixin(DrawMixin):
 _set_key = {'rate', 'compare', 'rate_open', 'rate_high', 'rate_low', 'rate_volume',}
 
 class DataMixin(CollectionMixin):
-    def _generate_data(self, df: pd.DataFrame):
-        for i in ['date', 'Open', 'high', 'low', 'close', 'volume']:
+    def _generate_data(self, df, sort_df=True, calc_ma=True, calc_info=True):
+        for i in ('date', 'Open', 'high', 'low', 'close', 'volume'):
             v = getattr(self, i)
-            if v in _set_key: raise Exception(f'you can not set "self.{i}" value in {_set_key}.\nself.{i}={v!r}')
+            if v in _set_key:
+                raise Exception(f'you can not set "self.{i}" value in {_set_key}.\nself.{i}={v!r}')
 
-        super()._generate_data(df)
+        super()._generate_data(df, sort_df, calc_ma)
+        df = self.df
 
-        df['rate'] = ((df[self.close] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
-        df['compare'] = (df[self.close] - df[self.close].shift(1)).fillna(0)
-        df['rate_open'] = ((df[self.Open] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
-        df['rate_high'] = ((df[self.high] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
-        df['rate_low'] = ((df[self.low] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
-        df['rate_volume'] = ((df[self.volume] - df[self.volume].shift(1)) /  df[self.volume].shift(1) * 100).__round__(2).fillna(0)
+        if not calc_info:
+            keys = set(df.keys())
+            for i in ('rate', 'compare', 'rate_open', 'rate_high', 'rate_low', 'rate_volume'):
+                if i not in keys:
+                    raise Exception(f'"{i}" column not in DataFrame.\nadd column or set calc_info=True.')
+        else:
+            df['rate'] = ((df[self.close] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
+            df['compare'] = (df[self.close] - df[self.close].shift(1)).fillna(0)
+            df['rate_open'] = ((df[self.Open] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
+            df['rate_high'] = ((df[self.high] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
+            df['rate_low'] = ((df[self.low] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
+            df['rate_volume'] = ((df[self.volume] - df[self.volume].shift(1)) /  df[self.volume].shift(1) * 100).__round__(2).fillna(0)
+
+        self.df = df
         return
 
     def set_text_coordante(self, vmin, vmax, pmin, pmax, volmax):
@@ -123,8 +130,10 @@ class LineMixin(DataMixin):
         self.canvas.blit()
         return
 
-    def set_data(self, df):
-        super().set_data(df)
+    def set_data(self, df, sort_df=True, calc_ma=True, change_lim=True, calc_info=True, *args, **kwargs):
+        return super().set_data(df, sort_df, calc_ma, change_lim, calc_info=calc_info, *args, **kwargs)
+    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, calc_info=True, *args, **kwargs):
+        super()._set_data(df, sort_df, calc_ma, change_lim, calc_info=calc_info, *args, **kwargs)
 
         self.vmin, self.vmax = (self.xmin, self.xmax)
         return
@@ -242,12 +251,12 @@ class LineMixin(DataMixin):
 
 class InfoMixin(LineMixin):
     fraction = False
-    candleformat = '{}\n\n종가:　 {}\n등락률: {}\n대비:　 {}\n시가:　 {}({})\n고가:　 {}({})\n저가:　 {}({})\n거래량: {}({})'
-    volumeformat = '{}\n\n거래량　　　: {}\n거래량증가율: {}'
+    candleformat = '{dt}\n\n종가:　 {close}\n등락률: {rate}\n대비:　 {compare}\n시가:　 {open}({rate_open})\n고가:　 {high}({rate_high})\n저가:　 {low}({rate_low})\n거래량: {volume}({rate_volume})'
+    volumeformat = '{dt}\n\n거래량　　　: {volume}\n거래량증가율: {rate_volume}'
     digit_price, digit_volume = (0, 0)
 
-    def set_data(self, df):
-        super().set_data(df)
+    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, calc_info=True, *args, **kwargs):
+        super()._set_data(df, sort_df, calc_ma, change_lim, calc_info, *args, **kwargs)
 
         # 슬라이더 날짜 텍스트 y 위치
         y = self._slider_ymax - (self._slider_ymax - self._slider_ymin) / 6
@@ -357,35 +366,35 @@ class InfoMixin(LineMixin):
                 else: l = float_to_str(ld[0])
 
                 text = self.candleformat.format(
-                    dt,
-                    f'{c:>{self._length_text}}{self.unit_price}',
-                    f'{r:>{self._length_text}}%',
-                    f'{com:>{self._length_text}}{self.unit_price}',
-                    f'{o:>{self._length_text}}{self.unit_price}', f'{Or:+06,.2f}%',
-                    f'{h:>{self._length_text}}{self.unit_price}', f'{hr:+06,.2f}%',
-                    f'{l:>{self._length_text}}{self.unit_price}', f'{lr:+06,.2f}%',
-                    f'{v:>{self._length_text}}{self.unit_volume}', f'{vr:+06,.2f}%',
+                    dt=dt,
+                    close=f'{c:>{self._length_text}}{self.unit_price}',
+                    rate=f'{r:>{self._length_text}}%',
+                    compare=f'{com:>{self._length_text}}{self.unit_price}',
+                    open=f'{o:>{self._length_text}}{self.unit_price}', rate_open=f'{Or:+06,.2f}%',
+                    high=f'{h:>{self._length_text}}{self.unit_price}', rate_high=f'{hr:+06,.2f}%',
+                    low=f'{l:>{self._length_text}}{self.unit_price}', rate_low=f'{lr:+06,.2f}%',
+                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=f'{vr:+06,.2f}%',
                 )
             else:
                 o, h, l, c = (float_to_str(o, self.digit_price), float_to_str(h, self.digit_price), float_to_str(l, self.digit_price), float_to_str(c, self.digit_price))
                 com = float_to_str(compare, self.digit_price, plus=True)
 
                 text = self.candleformat.format(
-                    dt,
-                    f'{c:>{self._length_text}}{self.unit_price}',
-                    f'{r:>{self._length_text}}%',
-                    f'{com:>{self._length_text}}{self.unit_price}',
-                    f'{o:>{self._length_text}}{self.unit_price}', f'{Or:+06,.2f}%',
-                    f'{h:>{self._length_text}}{self.unit_price}', f'{hr:+06,.2f}%',
-                    f'{l:>{self._length_text}}{self.unit_price}', f'{lr:+06,.2f}%',
-                    f'{v:>{self._length_text}}{self.unit_volume}', f'{vr:+06,.2f}%',
+                    dt=dt,
+                    close=f'{c:>{self._length_text}}{self.unit_price}',
+                    rate=f'{r:>{self._length_text}}%',
+                    compare=f'{com:>{self._length_text}}{self.unit_price}',
+                    open=f'{o:>{self._length_text}}{self.unit_price}', rate_open=f'{Or:+06,.2f}%',
+                    high=f'{h:>{self._length_text}}{self.unit_price}', rate_high=f'{hr:+06,.2f}%',
+                    low=f'{l:>{self._length_text}}{self.unit_price}', rate_low=f'{lr:+06,.2f}%',
+                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=f'{vr:+06,.2f}%',
                 )
         else:
             vrate = f'{vr:+06,.2f}'
             text = self.volumeformat.format(
-                dt,
-                f'{v:>{self._length_text}}{self.unit_volume}',
-                f'{vrate:>{self._length_text}}%',
+                dt=dt,
+                volume=f'{v:>{self._length_text}}{self.unit_volume}',
+                rate_volume=f'{vrate:>{self._length_text}}%',
             )
         return text
 
@@ -395,10 +404,6 @@ class CursorMixin(InfoMixin):
 
 
 class Chart(CursorMixin, CM, Mixin):
-    def _generate_data(self, df):
-        super()._generate_data(df)
-        return self.generate_data(df)
-
     def _on_draw(self, e):
         super()._on_draw(e)
         return self.on_draw(e)
@@ -406,10 +411,6 @@ class Chart(CursorMixin, CM, Mixin):
     def _on_pick(self, e):
         self.on_pick(e)
         return super()._on_pick(e)
-
-    def _draw_artist(self):
-        super()._draw_artist()
-        return self.create_background()
 
     def _blit(self):
         super()._blit()
@@ -434,12 +435,13 @@ if __name__ == '__main__':
     n = 2600
     data = data[n:n+100]
     df = pd.DataFrame(data)
+    print(f'{df.keys()=}')
 
     t = time()
     c = CursorMixin()
     c.unit_price = '$'
     # c.fraction = True
-    c.set_data(df=df)
+    c.set_data(df[['date', 'open', 'high', 'low', 'close', 'volume']])
     t2 = time() - t
     print(f'{t2=}')
     plt.show()
