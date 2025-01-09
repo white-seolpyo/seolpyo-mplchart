@@ -319,6 +319,7 @@ class SimpleMixin(LimMixin):
     simpler = False
     limit_volume = 1_500
     default_left, default_right = (180, 10)
+    _draw_blit = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -369,19 +370,15 @@ class SimpleMixin(LimMixin):
         self.ax_price.xaxis.draw(renderer)
         self.ax_price.yaxis.draw(renderer)
 
-        left, right = self._navcoordinate
-        Range = right - left
         if self.simpler:
-            if Range < 1_000: self.blitcandle.draw(renderer)
-            else: self.priceline.draw(renderer)
+            if self._draw_blit: self.priceline.draw(renderer)
+            else: self.blitcandle.draw(renderer)
         elif self.candle_on_ma:
             self.macollection.draw(renderer)
-            if 2_500 < Range: self.priceline.draw(renderer)
-            elif 800 < Range or 9_999 < self.xmax: self.blitcandle.draw(renderer)
+            if self._draw_blit: self.blitcandle.draw(renderer)
             else: self.candlecollection.draw(renderer)
         else:
-            if 2_500 < Range: self.priceline.draw(renderer)
-            elif 800 < Range or 9_999 < self.xmax: self.blitcandle.draw(renderer)
+            if self._draw_blit: self.blitcandle.draw(renderer)
             else: self.candlecollection.draw(renderer)
             self.macollection.draw(renderer)
 
@@ -477,9 +474,13 @@ class ClickMixin(SimpleMixin):
             self._change_coordinate()
             if self.is_click:
                 nsub = self._navcoordinate[1] - self._navcoordinate[0]
-                if self.min_distance <= nsub: self._lim()
                 if self.is_move: self._set_navigator(*self._navcoordinate)
-                elif self.intx is not None: self._set_navigator(self._x_click, self.intx)
+                else:
+                    self._draw_blit = 900 < nsub
+                    if self.intx is not None: self._set_navigator(self._x_click, self.intx)
+
+                if self.min_distance <= nsub: self._lim()
+
                 self.navigator.draw(self.canvas.renderer)
                 self._draw_blit_artist()
             self._slider_move_action(e)
