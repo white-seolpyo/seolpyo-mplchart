@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seolpyo-mplchart"
-version = "0.1.3"
+version = "1.0.0"
 dependencies  = [
   "matplotlib >= 3.7.0",
   "pandas >= 2.0.0",
@@ -49,6 +49,6 @@ Issues = "https://github.com/white-seolpyo/seolpyo-mplchart/issues"
 [tool.setuptools]
 packages = [
   "seolpyo_mplchart",
-  "seolpyo_mplchart.data",
+  "seolpyo_mplchart.sample",
 ]
 
