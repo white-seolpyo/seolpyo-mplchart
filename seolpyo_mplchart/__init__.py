@@ -1,120 +1,352 @@
-"""
-This software includes Matplotlib, which is licensed under the BSD License.
-Matplotlib Copyright (c) 2012- Matplotlib Development Team.
-Full license can be found in the LICENSE file or at https://matplotlib.org/stable/users/license.html
-"""
-
-
 import json
-from pathlib import Path
 from typing import Literal
+from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
 import pandas as pd
 
-
-from .slider import Chart as CM
+from .draw import Chart as BaseChart
+from .cursor import Chart as BaseCursorChart, format_candleinfo_ko, format_volumeinfo_ko, format_candleinfo_en, format_volumeinfo_en
+from .slider import Chart as BaseSliderChart
 
 
 __all__ = [
-    'pd',
-    'plt',
-
-    'Chart',
-
-    'sample',
-    'show',
-    'close',
+    'path_samsung', 'path_apple',
+    'format_candleinfo_ko', 'format_volumeinfo_ko',
+    'format_candleinfo_en', 'format_volumeinfo_en',
+    'sample', 'switch_backend', 'show', 'close',
+    'OnlyChart', 'CursorChart', 'SliderChart',
+    'set_theme',
 ]
 
 
-class Chart(CM):
-    r"""
-    You can see the guidance document:
-        Korean: https://white.seolpyo.com/entry/147/
-        English: https://white.seolpyo.com/entry/148/
+path_samsung = Path(__file__).parent / 'sample/samsung.txt'
+path_apple = Path(__file__).parent / 'sample/apple.txt'
 
-    Variables:
-        unit_price, unit_volume: unit for price and volume. default ('원', '주').
+def sample(stock: Literal['samsung', 'apple']='samsung', chart: Literal['Chart', 'CursorChart', 'SliderChart']='SliderChart'):
+    C: BaseSliderChart = {'Chart': BaseChart, 'CursorChart': BaseCursorChart, 'SliderChart': BaseSliderChart}[chart]()
+    path_file = path_samsung if stock == 'samsung' else path_apple
+    if stock == 'samsung':
+        C.format_candleinfo = format_candleinfo_ko
+        C.format_volumeinfo = format_volumeinfo_ko
+    else:
+        C.format_candleinfo = format_candleinfo_en
+        C.format_volumeinfo = format_volumeinfo_en
+        C.unit_price = '$'
+        C.unit_volume = 'Vol'
+        C.digit_price = 3
+        C.format_ma = 'ma{}'
 
-        figsize: figure size if you use plt.show(). default (12, 6).
-        ratio_ax_slider, ratio_ax_legend, ratio_ax_price, ratio_ax_volume: Axes ratio. default (3, 2, 18, 5).
-        adjust: figure adjust. default dict(top=0.95, bottom=0.05, left=0.01, right=0.93, wspace=0, hspace=0).
-        slider_top: ax_slider is located at the top or bottom. default True.
-        color_background: color of background. default '#fafafa'.
-        color_grid: color of grid. default '#d0d0d0'.
-
-        df: stock data.
-        date: date column key. default 'date'
-        Open, high, low, close: price column key. default ('open', 'high', 'low', 'close')
-        volume: volume column key. default 'volume'
-
-        label_ma: moving average legend label format. default '{}일선'
-        list_ma: Decide how many days to draw the moving average line. default (5, 20, 60, 120, 240)
-        list_macolor: Color the moving average line. If the number of colors is greater than the moving average line, black is applied. default ('darkred', 'fuchsia', 'olive', 'orange', 'navy', 'darkmagenta', 'limegreen', 'darkcyan',)
-
-        candle_on_ma: Decide whether to draw candles on the moving average line. default True
-        color_sliderline: Color of closing price line in ax_slider. default 'k'
-        color_navigatorline: Color of left and right dividing lines in selected area. default '#1e78ff'
-        color_navigator: Color of unselected area. default 'k'
-
-        color_up: The color of the candle. When the closing price is greater than the opening price. default '#fe3032'
-        color_down: The color of the candle. When the opening price is greater than the opening price. default '#0095ff'
-        color_flat: The color of the candle. WWhen the closing price is the same as the opening price. default 'k'
-        color_up_down: The color of the candle. If the closing price is greater than the opening price, but is lower than the previous day's closing price. default 'w'
-        color_down_up: The color of the candle. If the opening price is greater than the closing price, but is higher than the closing price of the previous day. default 'w'
-        colors_volume: The color of the volume bar. default '#1f77b4'
-
-        lineKwargs: Options applied to horizontal and vertical lines drawn along the mouse position. default dict(edgecolor='k', linewidth=1, linestyle='-')
-        textboxKwargs: Options that apply to the information text box. dufault dict(boxstyle='round', facecolor='w')
-
-        fraction: Decide whether to express information as a fraction. default False
-        candleformat: Candle information text format. default '{dt}\n\n종가:　 {close}\n등락률: {rate}\n대비:　 {compare}\n시가:　 {open}({rate_open})\n고가:　 {high}({rate_high})\n저가:　 {low}({rate_low})\n거래량: {volume}({rate_volume})'
-        volumeformat: Volume information text format. default '{dt}\n\n거래량　　　: {volume}\n거래량증가율: {rate_volume}'
-        digit_price, digit_volume: Number of decimal places expressed in informational text. default (0, 0)
-
-        min_distance: Minimum number of candles that can be selected with the slider. default 30
-        simpler: Decide whether to display candles simply when moving the chart. default False
-        limit_volume: Maximum number of volume bars drawn when moving the chart. default 2_000
-    """
-    pass
-
-
-_name = {'samsung', 'apple'}
-def sample(name: Literal['samsung', 'apple']='samsung'):
-    if name not in _name:
-        print('name should be either samsung or apple.')
-        return
-    file = Path(__file__).parent / f'data/{name}.txt'
-    with open(file, 'r', encoding='utf-8') as txt:
+    with open(path_file, 'r', encoding='utf-8') as txt:
         data = json.load(txt)
-    data = data
     df = pd.DataFrame(data)
 
-    c = Chart()
-    if name == 'apple':
-        c.unit_price = '$'
-        c.unit_volume = ' vol'
-        c.digit_price = 3
-        c.label_ma = 'ma{}'
-        c.candleformat = '{}\n\nend:     {}\nrate:    {}\ncompare: {}\nopen:    {}({})\nhigh:    {}({})\nlow:     {}({})\nvolume:  {}({})'
-        c.volumeformat = '{}\n\nvolume:      {}\nvolume rate: {}'
-    c.set_data(df)
+    C.set_data(df)
+
     show()
     close()
     return
 
 
-def show():
-    return plt.show()
+def switch_backend(newbackend='TkAgg'):
+    "call matplotlib.pyplot.switch_backend(newbackend)"
+    return plt.switch_backend(newbackend)
 
 
-def close(fig: int|str|Figure|None='all'):
+def show(Close=False):
+    """
+    call matplotlib.pyplot.show()
+    ```if Close``` if True, run matplotlib.pyplot.close('all') after window closee.
+    """
+    plt.show()
+    if Close: close()
+    return
+
+
+def close(fig='all'):
+    "call matplotlib.pyplot.close(fig)"
     return plt.close(fig)
 
 
-if __name__ == '__main__':
-    sample('apple')
+class OnlyChart(BaseChart):
+    r"""
+    You can see the guidance document:
+        Korean: https://white.seolpyo.com/entry/147/
+        English: https://white.seolpyo.com/entry/148/
+
+    Quick Start:
+        ```
+        import seolpyo_mplchart as mc
+        chart = mc.SliderChart() # Create instance
+        chart.set_data(df) # set stock price data
+        mc.show() # show chart(run ```matplotlib.pyplot.show()```)
+        mc.close() # run ```matplotlib.pyplot.close('close')```
+        ```
+
+    Class Variables:
+        watermark: watermark text.
+
+        figsize: Default size when creating a matplotlib window
+        ratio_ax_legend, ratio_ax_price, ratio_ax_volume: Axes ratio
+        adjust: figure adjust. default ```dict(top=0.95, bottom=0.05, left=0.01, right=0.93, wspace=0, hspace=0)```.
+        color_background: color of background. default '#fafafa'.
+        gridKwargs: kwargs applied to the grid
+        color_tick, color_tick_label: Tick and tick label colors. default ('k', 'k').
+
+        df: stock data DataFrame.
+        date: date column key. default 'date'
+        Open, high, low, close: price column key. default ('open', 'high', 'low', 'close')
+        volume: volume column key. default 'volume'. If ```if self.volume``` is ```False```, the volume chart is not drawn.
+
+        format_ma: moving average legend label format. default '{}일선'
+        list_ma: Decide how many days to draw the moving average line. default (5, 20, 60, 120, 240)
+        list_macolor: Color the moving average line. If the number of colors is greater than the moving average line, black is applied
+
+        candle_on_ma: Decide whether to draw candles on the moving average line. default ```True```
+        color_navigator_line: Color of left and right dividing lines in selected area
+        color_navigator_cover: Color of unselected area.
+
+        color_priceline: The color of the price line
+
+        color_up: The color of the candle. When the closing price is greater than the opening price
+        color_down: The color of the candle. When the opening price is greater than the opening price
+        color_flat: The color of the candle. When the closing price is the same as the opening price
+        color_up_down: The color of the candle. If the closing price is greater than the opening price, but is lower than the previous day's closing price
+        color_down_up: The color of the candle. If the opening price is greater than the closing price, but is higher than the closing price of the previous day
+        colors_volume: The color of the volume bar. default '#1f77b4'
+
+        color_volume_up: The color of the volume. When the closing price is greater than the opening price
+        color_volume_down: The color of the volume. When the opening price is greater than the opening price
+        color_volume_flatt: The color of the volume. When the closing price is the same as the opening price
+
+        candle_width_half, volume_width_half: half of the thickness of the candle and volume
+
+        color_box: The color of the candlebox and volumebox. Used when the mouse is over a candle or volume bar. default 'k'
+
+        limit_candle: Maximum number of candles to draw. default 800
+        limit_wick:  Maximum number of candle wicks to draw. default 4,000
+    """
+    pass
 
 
+class CursorChart(BaseCursorChart):
+    r"""
+    You can see the guidance document:
+        Korean: https://white.seolpyo.com/entry/147/
+        English: https://white.seolpyo.com/entry/148/
+
+    Quick Start:
+        ```
+        import seolpyo_mplchart as mc
+        chart = mc.SliderChart() # Create instance
+        chart.set_data(df) # set stock price data
+        mc.show() # show chart(run ```matplotlib.pyplot.show()```)
+        mc.close() # run ```matplotlib.pyplot.close('close')```
+        ```
+
+    Class Variables:
+        watermark: watermark text.
+
+        unit_price, unit_volume: price and volume unit. default ('원', '주').
+        digit_price, digit_volume: display decimal places when displaying price and volume. default (0, 0),
+
+        figsize: Default size when creating a matplotlib window
+        ratio_ax_legend, ratio_ax_price, ratio_ax_volume: Axes ratio
+        adjust: figure adjust. default ```dict(top=0.95, bottom=0.05, left=0.01, right=0.93, wspace=0, hspace=0)```.
+        color_background: color of background. default '#fafafa'.
+        gridKwargs: kwargs applied to the grid
+        color_tick, color_tick_label: Tick and tick label colors. default ('k', 'k').
+
+        df: stock data DataFrame.
+        date: date column key. default 'date'
+        Open, high, low, close: price column key. default ('open', 'high', 'low', 'close')
+        volume: volume column key. default 'volume'. If ```if self.volume``` is ```False```, the volume chart is not drawn.
+
+        format_ma: moving average legend label format. default '{}일선'
+        list_ma: Decide how many days to draw the moving average line. default (5, 20, 60, 120, 240)
+        list_macolor: Color the moving average line. If the number of colors is greater than the moving average line, black is applied
+
+        candle_on_ma: Decide whether to draw candles on the moving average line. default ```True```
+        color_navigator_line: Color of left and right dividing lines in selected area
+        color_navigator_cover: Color of unselected area.
+
+        color_priceline: The color of the price line
+
+        color_up: The color of the candle. When the closing price is greater than the opening price
+        color_down: The color of the candle. When the opening price is greater than the opening price
+        color_flat: The color of the candle. When the closing price is the same as the opening price
+        color_up_down: The color of the candle. If the closing price is greater than the opening price, but is lower than the previous day's closing price
+        color_down_up: The color of the candle. If the opening price is greater than the closing price, but is higher than the closing price of the previous day
+        colors_volume: The color of the volume bar. default '#1f77b4'
+
+        color_volume_up: The color of the volume. When the closing price is greater than the opening price
+        color_volume_down: The color of the volume. When the opening price is greater than the opening price
+        color_volume_flatt: The color of the volume. When the closing price is the same as the opening price
+
+        candle_width_half, volume_width_half: half of the thickness of the candle and volume
+
+        color_box: The color of the candlebox and volumebox. Used when the mouse is over a candle or volume bar. default 'k'
+
+        lineKwargs: kwarg applied to lines drawn based on mouse cursor position
+        textboxKwargs: kwarg applied to the info text bbox drawn on the chart. When this is applied, the following occurs: ```textKwargs['bbox'] = textboxKwargs```
+        textKwargs: A kwarg that applies to the informational text drawn on the chart. When this is applied, the following occurs: ```textKwargs['bbox'] = textboxKwargs```
+
+        fraction: Decide whether to express information as a fraction. default False
+        format_candleinfo: Candle information text format. default '{dt}\n\n종가:　 {close}\n등락률: {rate}\n대비:　 {compare}\n시가:　 {open}({rate_open})\n고가:　 {high}({rate_high})\n저가:　 {low}({rate_low})\n거래량: {volume}({rate_volume})'
+        format_volumeinfo: Volume information text format. default '{dt}\n\n거래량:　　　 {volume}\n거래량증가율: {rate_volume}\n대비:　　　　 {compare}'
+
+        limit_candle: Maximum number of candles to draw. default 800
+        limit_wick:  Maximum number of candle wicks to draw. default 4,000
+    """
+    pass
+
+
+class SliderChart(BaseSliderChart):
+    r"""
+    You can see the guidance document:
+        Korean: https://white.seolpyo.com/entry/147/
+        English: https://white.seolpyo.com/entry/148/
+
+    Quick Start:
+        ```
+        import seolpyo_mplchart as mc
+        chart = mc.SliderChart() # Create instance
+        chart.set_data(df) # set stock price data
+        mc.show() # show chart(run ```matplotlib.pyplot.show()```)
+        mc.close() # run ```matplotlib.pyplot.close('close')```
+        ```
+
+    Class Variables:
+        watermark: watermark text.
+
+        unit_price, unit_volume: price and volume unit. default ('원', '주').
+        digit_price, digit_volume: display decimal places when displaying price and volume. default (0, 0),
+
+        figsize: Default size when creating a matplotlib window
+        slider_top: ax_slider is located at the top or bottom. default ```True```.
+        ratio_ax_slider, ratio_ax_legend, ratio_ax_price, ratio_ax_volume: Axes ratio
+        ratio_ax_none: Ratio between volume chart and slider. Used only when ```self.slider_top``` is ```False```
+        adjust: figure adjust. default ```dict(top=0.95, bottom=0.05, left=0.01, right=0.93, wspace=0, hspace=0)```.
+        color_background: color of background. default '#fafafa'.
+        gridKwargs: kwargs applied to the grid
+        color_tick, color_tick_label: Tick and tick label colors. default ('k', 'k').
+
+        df: stock data DataFrame.
+        date: date column key. default 'date'
+        Open, high, low, close: price column key. default ('open', 'high', 'low', 'close')
+        volume: volume column key. default 'volume'. If ```if self.volume``` is ```False```, the volume chart is not drawn.
+
+        format_ma: moving average legend label format. default '{}일선'
+        list_ma: Decide how many days to draw the moving average line. default (5, 20, 60, 120, 240)
+        list_macolor: Color the moving average line. If the number of colors is greater than the moving average line, black is applied
+
+        candle_on_ma: Decide whether to draw candles on the moving average line. default ```True```
+        color_navigator_line: Color of left and right dividing lines in selected area
+        color_navigator_cover: Color of unselected area.
+
+        color_priceline: The color of the price line
+
+        color_up: The color of the candle. When the closing price is greater than the opening price
+        color_down: The color of the candle. When the opening price is greater than the opening price
+        color_flat: The color of the candle. When the closing price is the same as the opening price
+        color_up_down: The color of the candle. If the closing price is greater than the opening price, but is lower than the previous day's closing price
+        color_down_up: The color of the candle. If the opening price is greater than the closing price, but is higher than the closing price of the previous day
+        colors_volume: The color of the volume bar. default '#1f77b4'
+
+        color_volume_up: The color of the volume. When the closing price is greater than the opening price
+        color_volume_down: The color of the volume. When the opening price is greater than the opening price
+        color_volume_flatt: The color of the volume. When the closing price is the same as the opening price
+
+        candle_width_half, volume_width_half: half of the thickness of the candle and volume
+
+        color_box: The color of the candlebox and volumebox. Used when the mouse is over a candle or volume bar. default 'k'
+
+        lineKwargs: kwarg applied to lines drawn based on mouse cursor position
+        textboxKwargs: kwarg applied to the info text bbox drawn on the chart. When this is applied, the following occurs: ```textKwargs['bbox'] = textboxKwargs```
+        textKwargs: A kwarg that applies to the informational text drawn on the chart. When this is applied, the following occurs: ```textKwargs['bbox'] = textboxKwargs```
+
+        fraction: Decide whether to express information as a fraction. default False
+        format_candleinfo: Candle information text format. default '{dt}\n\n종가:　 {close}\n등락률: {rate}\n대비:　 {compare}\n시가:　 {open}({rate_open})\n고가:　 {high}({rate_high})\n저가:　 {low}({rate_low})\n거래량: {volume}({rate_volume})'
+        format_volumeinfo: Volume information text format. default '{dt}\n\n거래량:　　　 {volume}\n거래량증가율: {rate_volume}\n대비:　　　　 {compare}'
+
+        min_distance: Minimum number of candles that can be selected with the slider. default 30
+        limit_candle: Maximum number of candles to draw. default 800
+        limit_wick:  Maximum number of candle wicks to draw. default 4,000
+        limit_volume: Maximum number of volume bars to draw. default 800. Applies only to drawing candle wicks or price line.
+        limit_ma: If the number of displayed data is more than this, the price moving average line is not drawn. default 8,000
+
+        color_navigator_line: Navigator divider color. default '#1e78ff'
+        color_navigator_cover: Unselected slider area color. default = 'k'
+    """
+    pass
+
+
+def set_theme(chart: OnlyChart|CursorChart|SliderChart, theme: Literal['light', 'dark']='dark'):
+    initialized = hasattr(chart, 'ax_price')
+
+    if theme == 'dark':
+        chart.color_background = '#000000'
+        chart.color_tick, chart.color_tick_label = ('w', 'w')
+        chart.gridKwargs = {'color': '#FFFFFF'}
+
+        chart.color_priceline = 'w'
+        chart.color_up, chart.color_down = ('#00FF00', '#FF0000')
+        chart.color_flat = 'w'
+        chart.color_up_down, chart.color_down_up = ('#000000', '#000000')
+
+        chart.color_volume_up, chart.color_volume_down = ('#32CD32', '#FF4500')
+        chart.color_volume_flat = 'w'
+
+        chart.list_macolor = ('#FFFF00', '#7FFF00', '#00FFFF', '#FFA07A', '#FF00FF')
+
+        chart.lineKwargs = {'edgecolor': 'w'}
+        chart.color_box = 'w'
+        chart.textboxKwargs = {'facecolor': 'k', 'edgecolor': 'w'}
+        chart.textKwargs = {'color': 'w'}
+        chart.color_navigator_cover, chart.color_navigator_line = ('w', '#00FFFF')
+
+        if initialized:
+            chart.change_background_color('k')
+            chart.change_tick_color('w')
+            chart.change_line_color('w')
+            if hasattr(chart, 'navigator'): chart.navigator.set_edgecolor([chart.color_navigator_cover, chart.color_navigator_line])
+
+            if hasattr(chart, 'df'):
+                chart.set_candlecolor, chart.set_volumecolor = (True, True)
+                chart._get_color_segment()
+                chart.figure.canvas.draw()
+
+    elif theme == 'light':
+        chart.color_background = '#fafafa'
+        chart.color_tick, chart.color_tick_label = ('k', 'k')
+        chart.gridKwargs = {'color': '#d0d0d0'}
+
+        chart.color_priceline = 'k'
+        chart.color_up, chart.color_down = ('#FF2400', '#1E90FF')
+        chart.color_flat = 'k'
+        chart.color_up_down, chart.color_down_up = ('w', 'w')
+
+        chart.color_volume_up, chart.color_volume_down = ('#FF4D4D', '#5CA8F4')
+        chart.color_volume_flat = '#A9A9A9'
+
+        chart.list_macolor = ('#B22222', '#228B22', '#1E90FF', '#FF8C00', '#4B0082')
+
+        chart.lineKwargs = {'edgecolor': 'k'}
+        chart.color_box = 'k'
+        chart.textboxKwargs = {'facecolor': 'w', 'edgecolor': 'k'}
+        chart.textKwargs = {'color': 'k'}
+        chart.color_navigator_cover, chart.color_navigator_line = ('k', '#1e78ff')
+
+        if initialized:
+            chart.change_background_color('#fafafa')
+            chart.change_tick_color('k')
+            chart.change_line_color('k')
+            if hasattr(chart, 'navigator'): chart.navigator.set_edgecolor([chart.color_navigator_cover, chart.color_navigator_line])
+
+            if hasattr(chart, 'df'):
+                chart.set_candlecolor, chart.set_volumecolor = (True, True)
+                chart._get_color_segment()
+                chart.figure.canvas.draw()
+    else: raise ValueError(f'You send wrong arg.\n{theme=}')
+
+    return chart
