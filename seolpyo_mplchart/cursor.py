@@ -1,339 +1,380 @@
 from fractions import Fraction
 
+import matplotlib.pyplot as plt
 from matplotlib.backend_bases import MouseEvent
 from matplotlib.collections import LineCollection
 from matplotlib.text import Text
 import pandas as pd
 
-
-from .draw import DrawMixin, Chart as CM
+from .draw import BaseMixin as BM, Mixin as M
 from .utils import float_to_str
 
 
-class Mixin:
-    def on_draw(self, e):
-        "This function works if draw event active."
+class Mixin(M):
+    def on_move(self, e):
+        "If mouse move event active, This method work."
         return
 
 
-class CollectionMixin(DrawMixin):
-    lineKwargs = dict(edgecolor='k', linewidth=1, linestyle='-')
-    textboxKwargs = dict(boxstyle='round', facecolor='w')
+class CollectionMixin(BM):
+    lineKwargs = {}
+    textboxKwargs = {}
+    textKwargs = {}
+    color_box = 'k'
 
     def _add_collection(self):
         super()._add_collection()
-        self.sliderline = LineCollection([], animated=True, **self.lineKwargs)
-        self.ax_slider.add_artist(self.sliderline)
-        self.slider_text = Text(animated=True, bbox=self.textboxKwargs, verticalalignment='top', horizontalalignment='center')
-        self.ax_slider.add_artist(self.slider_text)
 
-        self.price_vline = LineCollection([], animated=True, **self.lineKwargs)
-        self.ax_price.add_artist(self.price_vline)
-        self.text_date_price = Text(animated=True, bbox=self.textboxKwargs, verticalalignment='bottom', horizontalalignment='center')
+        lineKwargs = {'edgecolor': 'k', 'linewidth': 1, 'linestyle': '-'}
+        lineKwargs.update(self.lineKwargs)
+        lineKwargs.update({'segments': [], 'animated': True})
+        textboxKwargs = {'boxstyle': 'round', 'facecolor': 'w'}
+        textboxKwargs.update(self.textboxKwargs)
+        textKwargs = self.textKwargs
+        textKwargs.update({'animated': True, 'bbox': textboxKwargs, 'horizontalalignment': '', 'verticalalignment': ''})
+        (textKwargs.pop('horizontalalignment'), textKwargs.pop('verticalalignment'))
+
+        self.price_crossline = LineCollection(**lineKwargs)
+        self.ax_price.add_artist(self.price_crossline)
+        self.text_date_price = Text(**textKwargs, horizontalalignment='center', verticalalignment='bottom')
         self.ax_price.add_artist(self.text_date_price)
-        self.text_price = Text(animated=True, bbox=self.textboxKwargs, verticalalignment='center', horizontalalignment='left')
+        self.text_price = Text(**textKwargs, horizontalalignment='left', verticalalignment='center')
         self.ax_price.add_artist(self.text_price)
 
-        self.volumeh_vline = LineCollection([], animated=True, **self.lineKwargs)
-        self.ax_volume.add_artist(self.volumeh_vline)
-        self.text_date_volume = Text(animated=True, bbox=self.textboxKwargs, verticalalignment='top', horizontalalignment='center')
+        self.volume_crossline = LineCollection(**lineKwargs)
+        self.ax_volume.add_artist(self.volume_crossline)
+        self.text_date_volume = Text(**textKwargs, horizontalalignment='center', verticalalignment='top')
         self.ax_volume.add_artist(self.text_date_volume)
-        self.text_volume = Text(animated=True, bbox=self.textboxKwargs, verticalalignment='center', horizontalalignment='left')
+        self.text_volume = Text(**textKwargs, horizontalalignment='left', verticalalignment='center')
         self.ax_volume.add_artist(self.text_volume)
 
-        self.price_hline = LineCollection([], animated=True, **self.lineKwargs)
-        self.ax_price.add_artist(self.price_hline)
-        self.price_box = LineCollection([], animated=True, linewidth=1.2, edgecolor='k')
+        self.price_box = LineCollection([], animated=True, linewidth=1.2, edgecolor=self.color_box)
         self.ax_price.add_artist(self.price_box)
-        self.text_price_info = Text(animated=True, bbox=self.textboxKwargs, verticalalignment='top', horizontalalignment='left')
+        self.text_price_info = Text(**textKwargs, horizontalalignment='left', verticalalignment='top')
         self.ax_price.add_artist(self.text_price_info)
 
-        self.volume_hline = LineCollection([], animated=True, **self.lineKwargs)
-        self.ax_volume.add_artist(self.volume_hline)
-        self.volume_box = LineCollection([], animated=True, linewidth=1.2, edgecolor='k')
+        self.volume_box = LineCollection([], animated=True, linewidth=1.2, edgecolor=self.color_box)
         self.ax_volume.add_artist(self.volume_box)
-        self.text_volume_info = Text(animated=True, bbox=self.textboxKwargs, verticalalignment='top', horizontalalignment='left')
+        self.text_volume_info = Text(**textKwargs, horizontalalignment='left', verticalalignment='top')
         self.ax_volume.add_artist(self.text_volume_info)
+        return
 
+    def change_background_color(self, color):
+        super().change_background_color(color)
+
+        self.text_price.set_backgroundcolor(color)
+        self.text_volume.set_backgroundcolor(color)
+
+        self.text_date_price.set_backgroundcolor(color)
+        self.text_date_volume.set_backgroundcolor(color)
+
+        self.text_price_info.set_backgroundcolor(color)
+        self.text_volume_info.set_backgroundcolor(color)
+        return
+
+    def change_text_color(self, color):
+        super().change_text_color(color)
+
+        self.text_price.set_color(color)
+        self.text_volume.set_color(color)
+
+        self.text_date_price.set_color(color)
+        self.text_date_volume.set_color(color)
+
+        self.text_price_info.set_color(color)
+        self.text_volume_info.set_color(color)
+        return
+
+    def change_line_color(self, color):
+        self.price_crossline.set_edgecolor(color)
+        self.volume_crossline.set_edgecolor(color)
+
+        self.price_box.set_edgecolor(color)
+        self.volume_box.set_edgecolor(color)
+
+        self.text_price.get_bbox_patch().set_edgecolor(color)
+        self.text_volume.get_bbox_patch().set_edgecolor(color)
+
+        self.text_date_price.get_bbox_patch().set_edgecolor(color)
+        self.text_date_volume.get_bbox_patch().set_edgecolor(color)
+
+        self.text_price_info.get_bbox_patch().set_edgecolor(color)
+        self.text_volume_info.get_bbox_patch().set_edgecolor(color)
         return
 
 
-_set_key = {'rate', 'compare', 'rate_open', 'rate_high', 'rate_low', 'rate_volume',}
+_set_key = {'rate', 'compare', 'rate_open', 'rate_high', 'rate_low', 'rate_volume', '_boxheight', '_boxmin', '_boxmax', '_volumeboxmax',}
 
 class DataMixin(CollectionMixin):
-    def _generate_data(self, df, sort_df=True, calc_ma=True, calc_info=True):
-        for i in ('date', 'Open', 'high', 'low', 'close', 'volume'):
+    def _validate_column_key(self):
+        super()._validate_column_key()
+        for i in ['date', 'Open', 'high', 'low', 'close', 'volume']:
             v = getattr(self, i)
-            if v in _set_key:
-                raise Exception(f'you can not set "self.{i}" value in {_set_key}.\nself.{i}={v!r}')
+            if v in _set_key: raise Exception(f'you can not set "{i}" to column key.\nself.{i}={v!r}')
+        return
 
-        super()._generate_data(df, sort_df, calc_ma)
-        df = self.df
+    def _generate_data(self, df, sort_df, calc_ma, set_candlecolor, set_volumecolor, calc_info, *_, **__):
+        super()._generate_data(df, sort_df, calc_ma, set_candlecolor, set_volumecolor, *_, **__)
 
         if not calc_info:
             keys = set(df.keys())
-            for i in ('rate', 'compare', 'rate_open', 'rate_high', 'rate_low', 'rate_volume'):
+            list_key = ['rate', 'compare', 'rate_open', 'rate_high', 'rate_low',]
+            if self.volume: list_key.append('rate_volume')
+            for i in list_key:
                 if i not in keys:
                     raise Exception(f'"{i}" column not in DataFrame.\nadd column or set calc_info=True.')
         else:
-            df['rate'] = ((df[self.close] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
-            df['compare'] = (df[self.close] - df[self.close].shift(1)).fillna(0)
-            df['rate_open'] = ((df[self.Open] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
-            df['rate_high'] = ((df[self.high] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
-            df['rate_low'] = ((df[self.low] - df[self.close].shift(1)) / df[self.close] * 100).__round__(2).fillna(0)
-            df['rate_volume'] = ((df[self.volume] - df[self.volume].shift(1)) /  df[self.volume].shift(1) * 100).__round__(2).fillna(0)
+            self.df['compare'] = (self.df[self.close] - self.df['_pre']).fillna(0)
+            self.df['rate'] = (self.df['compare'] / self.df[self.close] * 100).__round__(2).fillna(0)
+            self.df['rate_open'] = ((self.df[self.Open] - self.df['_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
+            self.df['rate_high'] = ((self.df[self.high] - self.df['_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
+            self.df['rate_low'] = ((self.df[self.low] - self.df['_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
+            if self.volume:
+                self.df['compare_volume'] = (self.df[self.volume] - self.df[self.volume].shift(1)).fillna(0)
+                self.df['rate_volume'] = (self.df['compare_volume'] / self.df[self.volume].shift(1) * 100).__round__(2).fillna(0)
 
-        self.df = df
+        self.df['_boxheight'] = (self.df[self.high] - self.df[self.low]) / 5
+        self.df['_boxmin'] = self.df[self.low] - self.df['_boxheight']
+        self.df['_boxmax'] = self.df[self.high] + self.df['_boxheight']
+        if self.volume: self.df['_volumeboxmax'] = self.df[self.volume] * 1.13
         return
 
-    def set_text_coordante(self, vmin, vmax, pmin, pmax, volmax):
-        # 주가, 거래량 텍스트 x 위치
-        x_distance = (vmax - vmin) / 30
-        self.v0, self.v1 = (vmin + x_distance, vmax - x_distance)
-        self.text_price.set_x(self.v0)
-        self.text_volume.set_x(self.v0)
+    def _set_lim(self, xmin, xmax, simpler=False, set_ma=True):
+        super()._set_lim(xmin, xmax, simpler, set_ma)
 
-        self.vmin, self.vmax = (vmin, vmax)
-        self.vmiddle = vmax - int((vmax - vmin) / 2)
+        psub = (self.price_ymax - self.price_ymin)
+        self.min_candleboxheight = psub / 8
 
-        psub = pmax - pmin
-        self.min_psub = psub / 12
+        pydistance = psub / 20
+        self.text_date_price.set_y(self.price_ymin + pydistance)
 
-        # 주가 날짜 텍스트 y 위치
-        y = (psub) / 20 + pmin
-        self.text_date_price.set_y(y)
-        # 주가 정보 y 위치
-        y = pmax - (psub) / 20
-        self.text_price_info.set_y(y)
+        self.min_volumeboxheight = self.volume_ymax / 4
 
-        # 거래량 날짜 텍스트 y 위치
-        y = volmax * 0.85
-        self.text_date_volume.set_y(y)
-        # 거래량 정보 y 위치
-        self.text_volume_info.set_y(y)
+        vxsub = self.vxmax - self.vxmin
+        self.vmiddle = self.vxmax - int((vxsub) / 2)
 
+        vxdistance = vxsub / 50
+        self.v0, self.v1 = (self.vxmin + vxdistance, self.vxmax - vxdistance)
+        self.vsixth = self.vxmin + int((vxsub) / 6)
+        self.veighth = self.vxmin + int((vxsub) / 8)
+
+        yvolume = self.volume_ymax * 0.85
+        self.text_date_volume.set_y(yvolume)
+
+        # 정보 텍스트박스
+        self.text_price_info.set_y(self.price_ymax - pydistance)
+        self.text_volume_info.set_y(yvolume)
         return
 
 
-class LineMixin(DataMixin):
-    in_slider, in_price, in_volume = (False, False, False)
-
-    intx, in_index = (None, False)
-    _in_candle, _in_volumebar = (False, False)
+class EventMixin(DataMixin):
+    in_price_chart, in_volume_chart = (False, False)
+    intx = None
 
     def _connect_event(self):
         super()._connect_event()
-        self.canvas.mpl_connect('motion_notify_event', lambda x: self._on_move(x))
-        return
-
-    def _blit(self):
-        self.canvas.blit()
-        return
-
-    def set_data(self, df, sort_df=True, calc_ma=True, change_lim=True, calc_info=True, *args, **kwargs):
-        return super().set_data(df, sort_df, calc_ma, change_lim, calc_info=calc_info, *args, **kwargs)
-    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, calc_info=True, *args, **kwargs):
-        super()._set_data(df, sort_df, calc_ma, change_lim, calc_info=calc_info, *args, **kwargs)
-
-        self.vmin, self.vmax = (self.xmin, self.xmax)
+        self.figure.canvas.mpl_connect('motion_notify_event', lambda x: self._on_move(x))
         return
 
     def _on_move(self, e):
-        self._restore_region()
-
         self._on_move_action(e)
-
-        if self.in_slider or self.in_price or self.in_volume:
-            self._slider_move_action(e)
-        if self.in_price or self.in_volume:
-            self._chart_move_action(e)
-
-        self._blit()
         return
 
     def _on_move_action(self, e: MouseEvent):
-        if not e.inaxes:
-            self.intx, self.in_index = (None, False)
-        else:
-            self._check_ax(e)
-            x, y = (e.xdata, e.ydata)
-            self.intx = x.__int__()
-            if self.intx < 0: self.in_index = False
-            else:
-                try: self.df['x'][self.intx]
-                except: self.in_index = False
-                else: self.in_index = True
+        self._check_ax(e)
+
+        self.intx = None
+        if self.in_price_chart or self.in_volume_chart: self._get_x(e)
         return
 
     def _check_ax(self, e: MouseEvent):
         ax = e.inaxes
+        if not ax or e.xdata is None or e.ydata is None:
+            self.in_price_chart, self.in_volume_chart = (False, False)
+        else:
+            self.in_price_chart = ax is self.ax_price
+            self.in_volume_chart = False if self.in_price_chart else ax is self.ax_volume
 
-        self.in_slider = ax is self.ax_slider
-        self.in_price = False if self.in_slider else ax is self.ax_price
-        self.in_volume = False if (self.in_slider or self.in_price) else ax is self.ax_volume
         return
 
-    def _slider_move_action(self, e: MouseEvent):
-        x = e.xdata
-
-        # 수직선
-        self.sliderline.set_segments([((x, self._slider_ymin), (x, self._slider_ymax))])
-        self.ax_slider.draw_artist(self.sliderline)
+    def _get_x(self, e: MouseEvent):
+        self.intx = e.xdata.__int__()
+        if self.intx < 0: self.intx = None
+        else:
+            try: self.list_index[self.intx]
+            except: self.intx = None
         return
 
-    def _chart_move_action(self, e: MouseEvent):
+
+class LineMixin(EventMixin):
+    digit_price, digit_volume = (0, 0)
+    in_candle, in_volumebar = (False, False)
+
+    def _on_move(self, e):
+        super()._on_move(e)
+
+        self._restore_region()
+
+        if self.in_price_chart: self._on_move_price_chart(e)
+        elif self.in_volume_chart: self._on_move_volume_chart(e)
+
+        self._blit()
+        return
+
+    def _on_move_price_chart(self, e: MouseEvent):
         x, y = (e.xdata, e.ydata)
-        if not y: return
-        roundy = y.__round__()
 
-        self.price_vline.set_segments([((x, self._price_ymin), (x, self._price_ymax))])
-        self.volumeh_vline.set_segments([((x, 0), (x, self._vol_ymax))])
-        self.ax_price.draw_artist(self.price_vline)
-        self.ax_volume.draw_artist(self.volumeh_vline)
+        self.price_crossline.set_segments([((x, self.price_ymin), (x, self.price_ymax)), ((self.vxmin, y), (self.vxmax, y))])
+        self.volume_crossline.set_segments([((x, 0), (x, self.volume_ymax))])
+        self._draw_crossline()
 
-        if self.in_price: self._price_move_action(x, y, roundy)
-        else: self._volume_move_action(x, y, roundy)
-        return
-
-    def _price_move_action(self, _, y, roundy):
-        # 수평선
-        self.price_hline.set_segments([((self.vmin, y), (self.vmax, y))])
-        self.ax_price.draw_artist(self.price_hline)
+        renderer = self.figure.canvas.renderer
 
         # 가격
-        self.text_price.set_text(f'{roundy:,}{self.unit_price}')
+        self.text_price.set_text(f'{float_to_str(y, self.digit_price)}{self.unit_price}')
+        self.text_price.set_x(self.v0 if self.veighth < x else self.vsixth)
         self.text_price.set_y(y)
-        self.ax_price.draw_artist(self.text_price)
+        self.text_price.draw(renderer)
 
-        # 캔들 강조
-        if self.in_index:
-            intx = self.intx
-            
-            h = self.df[self.high][intx]
-            l = self.df[self.low][intx]
-            sub = (h - l) / 2
-            if sub < self.min_psub: sub = self.min_psub
-            high = h + sub
-            low = l - sub
-            if high < y or y < low: self._in_candle = False
+        index = self.intx
+        if index is None: self.in_candle = False
+        else:
+            # 기준시간 표시
+            self.text_date_volume.set_text(f'{self.df[self.date][index]}')
+            self.text_date_volume.set_x(x)
+            self.text_date_volume.draw(renderer)
+
+            # 캔들 강조
+            low = self.df['_boxmin'][index]
+            high = self.df['_boxmax'][index]
+            sub = high - low
+            if sub < self.min_candleboxheight:
+                sub = (self.min_candleboxheight - sub) / 2
+                low -= sub
+                high += sub
+
+            if high < y or y < low: self.in_candle = False
             else:
-                self._in_candle = True
-                x1, x2 = (intx-0.3, intx+1.4)
+                self.in_candle = True
+                x1, x2 = (index-0.3, index+1.4)
                 self.price_box.set_segments([((x1, high), (x2, high), (x2, low), (x1, low), (x1, high))])
-                self.ax_price.draw_artist(self.price_box)
+                self.price_box.draw(renderer)
         return
 
-    def _volume_move_action(self, _, y, roundy):
-        # 수평선
-        self.volume_hline.set_segments([((self.vmin, y), (self.vmax, y))])
-        self.ax_volume.draw_artist(self.volume_hline)
+    def _draw_crossline(self):
+        renderer = self.figure.canvas.renderer
+        self.price_crossline.draw(renderer)
+        self.volume_crossline.draw(renderer)
+        return
+
+    def _on_move_volume_chart(self, e: MouseEvent):
+        x, y = (e.xdata, e.ydata)
+
+        self.price_crossline.set_segments([((x, self.price_ymin), (x, self.price_ymax))])
+        self.volume_crossline.set_segments([((x, 0), (x, self.volume_ymax)), ((self.vxmin, y), (self.vxmax, y))])
+        self._draw_crossline()
+
+        if not self.volume: return
+
+        renderer = self.figure.canvas.renderer
 
         # 거래량
-        self.text_volume.set_text(f'{roundy:,}{self.unit_volume}')
+        self.text_volume.set_text(f'{float_to_str(y, self.digit_volume)}{self.unit_volume}')
+        self.text_volume.set_x(self.v0 if self.veighth < x else self.vsixth)
         self.text_volume.set_y(y)
-        self.ax_volume.draw_artist(self.text_volume)
+        self.text_volume.draw(renderer)
 
-        # 거래량 강조
-        if self.in_index:
-            intx = self.intx
+        index = self.intx
+        if index is None: self.in_volumebar = False
+        else:
+            # 기준시간 표시
+            self.text_date_price.set_text(f'{self.df[self.date][index]}')
+            self.text_date_price.set_x(x)
+            self.text_date_price.draw(renderer)
 
-            high = self.df[self.volume][intx] * 1.1
+            # 거래량 강조
+            high = self.df[self.volume][index] * 1.15
             low = 0
-            self._volumerange = (0, high)
-            if high < y or y < low: self._in_volumebar: False
+            if high < self.min_volumeboxheight: high = self.min_volumeboxheight
+
+            if high < y or y < low: self.in_volumebar = False
             else:
-                self._in_volumebar = True
-                x1, x2 = (intx-0.3, intx+1.4)
+                self.in_volumebar = True
+                x1, x2 = (index-0.3, index+1.4)
                 self.volume_box.set_segments([((x1, high), (x2, high), (x2, low), (x1, low), (x1, high))])
-                self.ax_volume.draw_artist(self.volume_box)
+                self.volume_box.draw(renderer)
         return
 
+
+format_candleinfo_ko = '{dt}\n\n종가:　 {close}\n등락률: {rate}\n대비:　 {compare}\n시가:　 {open}({rate_open})\n고가:　 {high}({rate_high})\n저가:　 {low}({rate_low})\n거래량: {volume}({rate_volume})'
+format_volumeinfo_ko = '{dt}\n\n거래량:　　　 {volume}\n거래량증가율: {rate_volume}\n대비:　　　　 {compare}'
+format_candleinfo_en = '{dt}\n\nclose:   {close}\nrate:    {rate}\ncompare: {compare}\nopen:    {open}({rate_open})\nhigh:    {high}({rate_high})\nlow:     {low}({rate_low})\nvolume:  {volume}({rate_volume})'
+format_volumeinfo_en = '{dt}\n\nvolume:      {volume}\nvolume rate: {rate_volume}\ncompare:     {compare}'
 
 class InfoMixin(LineMixin):
     fraction = False
-    candleformat = '{dt}\n\n종가:　 {close}\n등락률: {rate}\n대비:　 {compare}\n시가:　 {open}({rate_open})\n고가:　 {high}({rate_high})\n저가:　 {low}({rate_low})\n거래량: {volume}({rate_volume})'
-    volumeformat = '{dt}\n\n거래량　　　: {volume}\n거래량증가율: {rate_volume}'
-    digit_price, digit_volume = (0, 0)
+    format_candleinfo = format_candleinfo_ko
+    format_volumeinfo = format_volumeinfo_ko
 
-    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, calc_info=True, *args, **kwargs):
-        super()._set_data(df, sort_df, calc_ma, change_lim, calc_info, *args, **kwargs)
+    def set_data(self, df, sort_df=True, calc_ma=True, set_candlecolor=True, set_volumecolor=True, calc_info=True, *args, **kwargs):
+        super().set_data(df, sort_df, calc_ma, set_candlecolor, set_volumecolor, calc_info, *args, **kwargs)
 
-        # 슬라이더 날짜 텍스트 y 위치
-        y = self._slider_ymax - (self._slider_ymax - self._slider_ymin) / 6
-        self.slider_text.set_y(y)
-
-        v = self.df[self.volume].max()
-        self._length_text = len(f'{v:,}')
-        self.set_text_coordante(self.xmin, self.xmax, self._price_ymin, self._price_ymax, self._vol_ymax)
-
+        self._length_text = self.df[(self.volume if self.volume else self.high)].apply(lambda x: len(f'{x:,}')).max()
         return
 
-    def _slider_move_action(self, e):
-        super()._slider_move_action(e)
+    def _on_move_price_chart(self, e):
+        super()._on_move_price_chart(e)
 
-        intx = self.intx
+        # 캔들 강조 확인
+        if not self.in_candle: return
 
-        if self.in_slider and self.in_index:
-            self.slider_text.set_text(f'{self.df[self.date][intx]}')
-            self.slider_text.set_x(e.xdata)
-            self.ax_slider.draw_artist(self.slider_text)
+        # 캔들 정보
+        self.text_price_info.set_text(self._get_info(self.intx))
+
+        if self.vmiddle < e.xdata: self.text_price_info.set_x(self.v0)
+        else:
+            # self.text_price_info.set_x(self.vmax - self.x_distance)
+            # self.text_price_info.set_horizontalalignment('right')
+            # 텍스트박스 크기 가져오기
+            bbox = self.text_price_info.get_window_extent().transformed(self.ax_price.transData.inverted())
+            width = bbox.x1 - bbox.x0
+            self.text_price_info.set_x(self.v1 - width)
+
+        self.text_price_info.draw(self.figure.canvas.renderer)
         return
 
-    def _price_move_action(self, x, y, roundy):
-        super()._price_move_action(x, y, roundy)
-        if not self.in_index: return
-        intx = self.intx
+    def _on_move_volume_chart(self, e):
+        super()._on_move_volume_chart(e)
 
-        # 텍스트
-        text = f'{self.df[self.date][intx]}'
-        self.text_date_volume.set_text(text)
-        self.text_date_volume.set_x(x)
-        self.ax_volume.draw_artist(self.text_date_volume)
+        # 거래량 강조 확인
+        if not self.in_volumebar: return
 
-        # 캔들 강조
-        if self.in_price and self._in_candle:
-            # 캔들 정보
-            self.text_price_info.set_text(self._get_info(intx))
-            if x < self.vmiddle:
-                # 텍스트박스 크기 가져오기
-                bbox = self.text_price_info.get_window_extent().transformed(self.ax_price.transData.inverted())
-                width = bbox.x1 - bbox.x0
-                self.text_price_info.set_x(self.v1 - width)
-            else:
-                self.text_price_info.set_x(self.v0)
-                self.text_price_info.set_horizontalalignment('left')
-            self.ax_price.draw_artist(self.text_price_info)
-        return
+        # 거래량 정보
+        self.text_volume_info.set_text(self._get_info(self.intx, is_price=False))
 
-    def _volume_move_action(self, x, y, roundy):
-        super()._volume_move_action(x, y, roundy)
-        if not self.in_index: return
-        intx = self.intx
+        if self.vmiddle < e.xdata: self.text_volume_info.set_x(self.v0)
+        else:
+            # self.text_volume_info.set_x(self.vmax - self.x_distance)
+            # self.text_volume_info.set_horizontalalignment('right')
+            # 텍스트박스 크기 가져오기
+            bbox = self.text_volume_info.get_window_extent().transformed(self.ax_price.transData.inverted())
+            width = bbox.x1 - bbox.x0
+            self.text_volume_info.set_x(self.v1 - width)
 
-        text = f'{self.df[self.date][intx]}'
-        self.text_date_price.set_text(text)
-        self.text_date_price.set_x(x)
-        self.ax_price.draw_artist(self.text_date_price)
-
-        # 거래량 강조
-        if self.in_volume and self._in_volumebar:
-            # 거래량 정보
-            if x < self.vmiddle:
-                bbox = self.text_volume_info.get_window_extent().transformed(self.ax_price.transData.inverted())
-                width = bbox.x1 - bbox.x0
-                self.text_volume_info.set_x(self.v1 - width)
-            else:
-                self.text_volume_info.set_x(self.v0)
-                self.text_volume_info.set_horizontalalignment('left')
-            self.text_volume_info.set_text(self._get_info(intx, False))
-            self.ax_volume.draw_artist(self.text_volume_info)
+        self.text_volume_info.draw(self.figure.canvas.renderer)
         return
 
     def _get_info(self, index, is_price=True):
         dt = self.df[self.date][index]
-        v = self.df[self.volume][index]
-        v = float_to_str(v, self.digit_volume)
-        vr = self.df['rate_volume'][index]
+        if not self.volume:
+            v, vr = ('-', '-%')
+        else:
+            v = self.df[self.volume][index]
+            v = float_to_str(v, self.digit_volume)
+            # if not v % 1: v = int(v)
+            vr = self.df['rate_volume'][index]
+            vr = f'{vr:+06,.2f}%'
+
         if is_price:
             o, h, l, c = (self.df[self.Open][index], self.df[self.high][index], self.df[self.low][index], self.df[self.close][index])
             rate, compare = (self.df['rate'][index], self.df['compare'][index])
@@ -345,27 +386,23 @@ class InfoMixin(LineMixin):
                 cd = divmod(c, 1)
                 if cd[1]: c = f'{float_to_str(cd[0])} {Fraction((cd[1]))}'
                 else: c = float_to_str(cd[0])
-
                 comd = divmod(compare, 1)
                 if comd[1]: com = f'{float_to_str(comd[0], plus=True)} {Fraction(comd[1])}'
                 else: com = float_to_str(comd[0], plus=True)
-
                 o = o.__round__(self.digit_price)
                 od = divmod(o, 1)
                 if od[1]: o = f'{float_to_str(od[0])} {Fraction(od[1])}'
                 else: o = float_to_str(od[0])
-
                 h = h.__round__(self.digit_price)
                 hd = divmod(h, 1)
                 if hd[1]: h = f'{float_to_str(hd[0])} {Fraction(hd[1])}'
                 else: h = float_to_str(hd[0])
-
                 l = l.__round__(self.digit_price)
                 ld = divmod(l, 1)
                 if ld[1]: l = f'{float_to_str(ld[0])} {Fraction(ld[1])}'
                 else: l = float_to_str(ld[0])
 
-                text = self.candleformat.format(
+                text = self.format_candleinfo.format(
                     dt=dt,
                     close=f'{c:>{self._length_text}}{self.unit_price}',
                     rate=f'{r:>{self._length_text}}%',
@@ -373,13 +410,13 @@ class InfoMixin(LineMixin):
                     open=f'{o:>{self._length_text}}{self.unit_price}', rate_open=f'{Or:+06,.2f}%',
                     high=f'{h:>{self._length_text}}{self.unit_price}', rate_high=f'{hr:+06,.2f}%',
                     low=f'{l:>{self._length_text}}{self.unit_price}', rate_low=f'{lr:+06,.2f}%',
-                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=f'{vr:+06,.2f}%',
+                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=vr,
                 )
             else:
                 o, h, l, c = (float_to_str(o, self.digit_price), float_to_str(h, self.digit_price), float_to_str(l, self.digit_price), float_to_str(c, self.digit_price))
                 com = float_to_str(compare, self.digit_price, plus=True)
 
-                text = self.candleformat.format(
+                text = self.format_candleinfo.format(
                     dt=dt,
                     close=f'{c:>{self._length_text}}{self.unit_price}',
                     rate=f'{r:>{self._length_text}}%',
@@ -387,23 +424,38 @@ class InfoMixin(LineMixin):
                     open=f'{o:>{self._length_text}}{self.unit_price}', rate_open=f'{Or:+06,.2f}%',
                     high=f'{h:>{self._length_text}}{self.unit_price}', rate_high=f'{hr:+06,.2f}%',
                     low=f'{l:>{self._length_text}}{self.unit_price}', rate_low=f'{lr:+06,.2f}%',
-                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=f'{vr:+06,.2f}%',
+                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=vr,
                 )
-        else:
-            vrate = f'{vr:+06,.2f}'
-            text = self.volumeformat.format(
+        elif self.volume:
+            compare = self.df['compare_volume'][index]
+            com = float_to_str(compare, self.digit_volume, plus=True)
+            text = self.format_volumeinfo.format(
                 dt=dt,
                 volume=f'{v:>{self._length_text}}{self.unit_volume}',
-                rate_volume=f'{vrate:>{self._length_text}}%',
+                rate_volume=f'{vr:>{self._length_text}}%',
+                compare=f'{com:>{self._length_text}}{self.unit_volume}',
             )
+        else: text = ''
         return text
 
 
-class CursorMixin(InfoMixin):
+class BaseMixin(InfoMixin):
     pass
 
 
-class Chart(CursorMixin, CM, Mixin):
+class Chart(BaseMixin, Mixin):
+    def _add_collection(self):
+        super()._add_collection()
+        return self.add_artist()
+
+    def _draw_artist(self):
+        super()._draw_artist()
+        return self.draw_artist()
+
+    def _get_segments(self):
+        self.generate_data()
+        return super()._get_segments()
+
     def _on_draw(self, e):
         super()._on_draw(e)
         return self.on_draw(e)
@@ -412,38 +464,22 @@ class Chart(CursorMixin, CM, Mixin):
         self.on_pick(e)
         return super()._on_pick(e)
 
-    def _blit(self):
-        super()._blit()
-        return self.on_blit()
+    def _set_candle_segments(self, index_start, index_end):
+        super()._set_candle_segments(index_start, index_end)
+        self.set_segment(index_start, index_end)
+        return
+
+    def _set_wick_segments(self, index_start, index_end, simpler=False):
+        super()._set_wick_segments(index_start, index_end, simpler)
+        self.set_segment(index_start, index_end, simpler)
+        return
+
+    def _set_line_segments(self, index_start, index_end, simpler=False, set_ma=True):
+        super()._set_line_segments(index_start, index_end, simpler, set_ma)
+        self.set_segment(index_start, index_end, simpler, set_ma)
+        return
 
     def _on_move(self, e):
         super()._on_move(e)
         return self.on_move(e)
-
-
-if __name__ == '__main__':
-    import json
-    from time import time
-
-    import matplotlib.pyplot as plt
-    from pathlib import Path
-
-    file = Path(__file__).parent / 'data/samsung.txt'
-    file = Path(__file__).parent / 'data/apple.txt'
-    with open(file, 'r', encoding='utf-8') as txt:
-        data = json.load(txt)
-    n = 2600
-    data = data[n:n+100]
-    df = pd.DataFrame(data)
-    print(f'{df.keys()=}')
-
-    t = time()
-    c = CursorMixin()
-    c.unit_price = '$'
-    # c.fraction = True
-    c.set_data(df[['date', 'open', 'high', 'low', 'close', 'volume']])
-    t2 = time() - t
-    print(f'{t2=}')
-    plt.show()
-
 

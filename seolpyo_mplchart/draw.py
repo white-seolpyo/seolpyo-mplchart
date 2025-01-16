@@ -1,6 +1,7 @@
 from matplotlib.backend_bases import PickEvent
 from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
+from matplotlib.text import Text
 import numpy as np
 import pandas as pd
 
@@ -9,214 +10,399 @@ from .base import Base
 
 
 class Mixin:
-    def on_blit(self):
-        "This function works after cavas.blit()."
+    def add_artist(self):
+        "This method work when ```__init__()``` run."
         return
+
+    def draw_artist(self):
+        "This method work before ```figure.canvas.blit()```."
+        return
+
+    def generate_data(self):
+        "This method work before create segments."
+        return
+
     def on_draw(self, e):
-        "This function works if draw event active."
+        "If draw event active, This method work."
         return
-    def on_move(self, e):
-        "This function works if mouse move event active."
-        return
+
     def on_pick(self, e):
-        "This function works if pick event active."
+        "If draw pick active, This method work."
+        return
+
+    def set_segment(self, xmin, xmax, simpler=False, set_ma=True):
+        "This method work if xlim change."
         return
 
 
-_set_key = {'zero', 'x', 'left', 'right', 'top', 'bottom',}
-
-class DataMixin(Base):
-    df: pd.DataFrame
-    date = 'date'
-    Open, high, low, close = ('open', 'high', 'low', 'close')
-    volume = 'volume'
-
-    _visible_ma = set()
-    label_ma = '{}일선'
-    list_ma = (5, 20, 60, 120, 240)
-    # https://matplotlib.org/stable/gallery/color/named_colors.html
-    list_macolor = ('darkred', 'fuchsia', 'olive', 'orange', 'navy', 'darkmagenta', 'limegreen', 'darkcyan',)
-
-    color_up, color_down = ('#fe3032', '#0095ff')
-    color_flat = 'k'
-    color_up_down, color_down_up = ('w', 'w')
-    colors_volume = '#1f77b4'
-
-    candlewidth_half, volumewidth_half = (0.3, 0.36)
-
-    def _generate_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, **_):
-        for i in ('date', 'Open', 'high', 'low', 'close', 'volume'):
-            k: str = getattr(self, i)
-            if k in _set_key: raise Exception(f'you can not set "self.{i}" value in {_set_key}.\nself.{i}={k!r}')
-            if i != 'date':
-                dtype = df[k].dtype
-                if not isinstance(dtype, (np.dtypes.Float64DType, np.dtypes.Int64DType, np.dtypes.Float32DType, np.dtypes.Int32DType)):
-                    raise TypeError(f'column dtype must be one of "float64" or "int64" or "float32" or "int32".(excluding "date" column)\ndf[{k!r}].dtype={dtype!r}')
-
-        # DataFrame 정렬
-        if sort_df:
-            df = df.sort_values([self.date]).reset_index()
-
-        if not self.list_ma: self.list_ma = tuple()
-        if calc_ma:
-            for i in self.list_ma: df[f'ma{i}'] = df[self.close].rolling(i).mean()
-        else:
-            keys = set(df.keys())
-            for i in self.list_ma:
-                if f'ma{i}' not in keys:
-                    raise Exception(f'"ma{i}" column not in DataFrame.\nadd column or set calc_ma=True.')
-
-        df['x'] = df.index + 0.5
-        df['left'] = df['x'] - self.candlewidth_half
-        df['right'] = df['x'] + self.candlewidth_half
-        df['vleft'] = df['x'] - self.volumewidth_half
-        df['vright'] = df['x'] + self.volumewidth_half
-
-        df['top'] = np.where(df[self.Open] <= df[self.close], df[self.close], df[self.Open])
-        df['top'] = np.where(df[self.close] < df[self.Open], df[self.Open], df[self.close])
-        df['bottom'] = np.where(df[self.Open] <= df[self.close], df[self.Open], df[self.close])
-        df['bottom'] = np.where(df[self.close] < df[self.Open], df[self.close], df[self.Open])
-
-        # 양봉
-        df.loc[:, ['zero', 'facecolor', 'edgecolor']] = (0, self.color_up, self.color_up)
-        if self.color_up != self.color_down:
-            # 음봉
-            df.loc[df[self.close] < df[self.Open], ['facecolor', 'edgecolor']] = (self.color_down, self.color_down)
-        if self.color_up != self.color_flat:
-            # 보합
-            df.loc[df[self.close] == df[self.Open], ['facecolor', 'edgecolor']] = (self.color_flat, self.color_flat)
-        if self.color_up != self.color_up_down:
-            # 양봉(비우기)
-            df.loc[(df['facecolor'] == self.color_up) & (df[self.close] < df[self.close].shift(1)), 'facecolor'] = self.color_up_down
-        if self.color_down != self.color_down_up:
-            # 음봉(비우기)
-            df.loc[(df['facecolor'] == self.color_down) & (df[self.close].shift(1) < df[self.close]), ['facecolor']] = self.color_down_up
-
-        self.df = df
-        return
-
-class CollectionMixin(DataMixin):
-    color_sliderline = 'k'
-
-    _masegment, _macolors = ({}, {})
+class CollectionMixin(Base):
+    facecolor_volume, edgecolor_volume = ('#1f77b4', 'k')
+    watermark = 'seolpyo mplchart'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._connect_event()
         self._add_collection()
         return
 
-    def _connect_event(self):
-        self.canvas.mpl_connect('pick_event', lambda x: self._on_pick(x))
-        return
-
     def _add_collection(self):
-        self.macollection = LineCollection([], animated=True, antialiased=True, linewidth=1)
-        self.ax_price.add_collection(self.macollection)
+        self.collection_ma = LineCollection([], animated=True, linewidths=1)
+        self.ax_price.add_collection(self.collection_ma)
 
-        self.slidercollection = LineCollection([], animated=True, antialiased=True)
-        self.ax_slider.add_collection(self.slidercollection)
+        self.collection_candle = LineCollection([], animated=True, linewidths=0.8)
+        self.ax_price.add_collection(self.collection_candle)
 
-        # https://white.seolpyo.com/entry/145/
-        self.candlecollection = LineCollection([], animated=True, antialiased=True, linewidths=1)
-        self.ax_price.add_collection(self.candlecollection)
+        self.collection_volume = LineCollection([], animated=True, linewidths=1)
+        self.ax_volume.add_collection(self.collection_volume)
 
-        # https://white.seolpyo.com/entry/145/
-        self.volumecollection = LineCollection([], animated=True, antialiased=True, facecolors=self.colors_volume, linewidths=1, edgecolors='k')
-        self.ax_volume.add_collection(self.volumecollection)
-
+        x = (self.adjust['right']-self.adjust['left']) / 2
+        self.text_watermark = Text(
+            x=x, y=0.51, text=self.watermark,
+            animated=True,
+            fontsize=20, color=self.color_tick_label, alpha=0.2,
+            horizontalalignment='center', verticalalignment='center',
+        )
+        self.figure.add_artist(self.text_watermark)
         return
 
-    def _set_collection(self):
-        candleseg = self.df[[
-            'x', self.high,
-            'x', 'top',
-            'left', 'top',
-            'left', 'bottom',
-            'x', 'bottom',
-            'x', self.low,
-            'x', 'bottom',
-            'right', 'bottom',
-            'right', 'top',
-            'x', 'top',
-        ]].values
-        candleseg = candleseg.reshape(candleseg.shape[0], 10, 2)
-
-        self.candlecollection.set_segments(candleseg)
-        self.candlecollection.set_facecolor(self.df['facecolor'].values)
-        self.candlecollection.set_edgecolor(self.df['edgecolor'].values)
-
-        volseg = self.df[[
-            'left', 'zero',
-            'left', self.volume,
-            'right', self.volume,
-            'right', 'zero',
-        ]].values
-        volseg = volseg.reshape(volseg.shape[0], 4, 2)
-
-        self.volumecollection.set_segments(volseg)
-
-        self._set_macollection()
-
-        # 가격이동평균선
-        maseg = reversed(self._masegment.values())
-        colors, widths = ([], [])
-        for i in reversed(self._macolors.values()): (colors.append(i), widths.append(1))
-        self.macollection.set_segments(maseg)
-        self.macollection.set_edgecolor(colors)
-
-        # 슬라이더 선형차트
-        keys = []
-        for i in reversed(self.list_ma):
-            keys.append('x')
-            keys.append(f'ma{i}')
-        sliderseg = self.df[keys + ['x', self.close]].values
-        sliderseg = sliderseg.reshape(sliderseg.shape[0], self.list_ma.__len__()+1, 2).swapaxes(0, 1)
-        (colors.append(self.color_sliderline), widths.append(1.8))
-        self.slidercollection.set_segments(sliderseg)
-        self.slidercollection.set_edgecolor(colors)
-        self.slidercollection.set_linewidth(widths)
+    def change_background_color(self, color):
+        self.figure.set_facecolor(color)
+        self.ax_price.set_facecolor(color)
+        self.ax_volume.set_facecolor(color)
+        legends = self.ax_legend.get_legend()
+        if legends: legends.get_frame().set_facecolor(color)
         return
 
-    def _set_macollection(self):
+    def change_tick_color(self, color):
+        for ax in (self.ax_price, self.ax_volume):
+            for i in ['top', 'bottom', 'left', 'right']: ax.spines[i].set_color(self.color_tick)
+            ax.tick_params(colors=color)
+            ax.tick_params(colors=color)
+
+        legends = self.ax_legend.get_legend()
+        if legends: legends.get_frame().set_edgecolor(color)
+
+        self.change_text_color(color)
+        return
+
+    def change_text_color(self, color):
+        self.text_watermark.set_color(color)
+        legends = self.ax_legend.get_legend()
+        if legends:
+            for i in legends.texts: i.set_color(color)
+        return
+
+    def change_line_color(self, color): return
+
+
+_set_key = {'_x', '_left', '_right', '_volleft', '_volright', '_top', '_bottom', '_pre', '_zero', '_volymax',}
+
+class DataMixin(CollectionMixin):
+    df: pd.DataFrame
+
+    date = 'date'
+    Open, high, low, close = ('open', 'high', 'low', 'close')
+    volume = 'volume'
+    list_ma = (5, 20, 60, 120, 240)
+
+    candle_width_half, volume_width_half = (0.24, 0.36)
+    color_up, color_down = ('#FF2400', '#1E90FF')
+    color_flat = 'k'
+    color_up_down, color_down_up = ('w', 'w')
+
+    color_volume_up, color_volume_down = ('#FF4D4D', '#5CA8F4')
+    color_volume_flat = '#A9A9A9'
+
+    set_candlecolor, set_volumecolor = (True, True)
+
+    def _generate_data(self, df: pd.DataFrame, sort_df, calc_ma, set_candlecolor, set_volumecolor, *_, **__):
+        self._validate_column_key()
+
+        # 오름차순 정렬
+        if sort_df: df = df.sort_values([self.date])
+        df = df.reset_index()
+
+        self.list_index = df.index.tolist()
+        self.xmin, self.xmax = (0, self.list_index[-1])
+
+        if not self.list_ma: self.list_ma = tuple()
+        else:
+            self.list_ma = sorted(self.list_ma)
+            # 가격이동평균선 계산
+            if calc_ma:
+                for i in self.list_ma: df[f'ma{i}'] = df[self.close].rolling(i).mean()
+            else:
+                set_key = set(self.df.keys())
+                for i in self.list_ma:
+                    key = f'ma{i}'
+                    if key not in set_key:
+                        raise KeyError(f'"{key}" column not found.\nset calc_ma=True or add "{key}" column.')
+
+        df['_x'] = df.index + 0.5
+        df['_left'] = df['_x'] - self.candle_width_half
+        df['_right'] = df['_x'] + self.candle_width_half
+        df['_volleft'] = df['_x'] - self.volume_width_half
+        df['_volright'] = df['_x'] + self.volume_width_half
+        df.loc[:, '_zero'] = 0
+
+        df['_top'] = np.where(df[self.Open] <= df[self.close], df[self.close], df[self.Open])
+        df['_top'] = np.where(df[self.close] < df[self.Open], df[self.Open], df[self.close])
+        df['_bottom'] = np.where(df[self.Open] <= df[self.close], df[self.Open], df[self.close])
+        df['_bottom'] = np.where(df[self.close] < df[self.Open], df[self.close], df[self.Open])
+
+        df['_pre'] = df[self.close].shift(1)
+        if self.volume: df['_volymax'] = df[self.volume] * 1.2
+
+        if not set_candlecolor:
+            keys = set(df.keys())
+            for i in ('facecolor', 'edgecolor', 'volumefacecolor',):
+                if i not in keys:
+                    raise Exception(f'"{i}" column not in DataFrame.\nadd column or set set_candlecolor=True.')
+        self.set_candlecolor = set_candlecolor
+
+        if not set_volumecolor:
+            keys = set(df.keys())
+            for i in ('volumefacecolor', 'volumeedgecolor',):
+                if i not in keys:
+                    raise Exception(f'"{i}" column not in DataFrame.\nadd column or set set_volumecolor=True.')
+        self.set_volumecolor = set_volumecolor
+
+        self.df = df
+        return
+
+    def _validate_column_key(self):
+        for i in ('date', 'Open', 'high', 'low', 'close', 'volume'):
+            v = getattr(self, i)
+            if v in _set_key: raise Exception(f'you can not set "{i}" to column key.\nself.{i}={v!r}')
+        return
+
+
+class SegmentMixin(DataMixin):
+    _visible_ma = set()
+
+    limit_candle = 800
+    limit_wick = 4_000
+    limit_volume = 800
+
+    color_priceline = 'k'
+    format_ma = '{}일선'
+    # https://matplotlib.org/stable/gallery/color/named_colors.html
+    list_macolor = ('#B22222', '#228B22', '#1E90FF', '#FF8C00', '#4B0082')
+
+    def _get_segments(self):
+        # 캔들 세그먼트
+        segment_candle = self.df[[
+            '_x', self.high,
+            '_x', '_top',
+            '_left', '_top',
+            '_left', '_bottom',
+            '_x', '_bottom',
+            '_x', self.low,
+            '_x', '_bottom',
+            '_right', '_bottom',
+            '_right', '_top',
+            '_x', '_top',
+            '_x', self.high,
+            '_x', '_top',
+        ]].values
+        self.segment_candle = segment_candle.reshape(segment_candle.shape[0], 12, 2)
+
+        # 심지 세그먼트
+        segment_wick = self.df[[
+            '_x', self.high,
+            '_x', self.low,
+        ]].values
+        self.segment_candle_wick = segment_wick.reshape(segment_wick.shape[0], 2, 2)
+
+        # 종가 세그먼트
+        segment_priceline = segment_wick = self.df[['_x', self.close]].values
+        self.segment_priceline = segment_priceline.reshape(1, *segment_wick.shape)
+
+        if self.volume:
+            # 거래량 바 세그먼트
+            segment_volume = self.df[[
+                '_volleft', '_zero',
+                '_volleft', self.volume,
+                '_volright', self.volume,
+                '_volright', '_zero',
+            ]].values
+            self.segment_volume = segment_volume.reshape(segment_volume.shape[0], 4, 2)
+
+            # 거래량 심지 세그먼트
+            segment_volume_wick = self.df[[
+                '_x', '_zero',
+                '_x', self.volume,
+            ]].values
+            self.segment_volume_wick = segment_volume_wick.reshape(segment_volume_wick.shape[0], 2, 2)
+
+        self._get_ma_segment()
+        self._get_color_segment()
+        return
+
+    def _get_color_segment(self):
+        if self.set_candlecolor:
+            # 양봉
+            self.df.loc[:, ['facecolor', 'edgecolor']] = (self.color_up, self.color_up)
+            if self.color_up != self.color_down:
+                # 음봉
+                self.df.loc[self.df[self.close] < self.df[self.Open], ['facecolor', 'edgecolor']] = (self.color_down, self.color_down)
+            if self.color_up != self.color_flat and self.color_down != self.color_flat:
+                # 보합
+                self.df.loc[self.df[self.close] == self.df[self.Open], ['facecolor', 'edgecolor']] = (self.color_flat, self.color_flat)
+            if self.color_up != self.color_up_down:
+                # 양봉(비우기)
+                self.df.loc[(self.df['facecolor'] == self.color_up) & (self.df[self.close] <= self.df['_pre']), 'facecolor'] = self.color_up_down
+            if self.color_down != self.color_down_up:
+                # 음봉(비우기)
+                self.df.loc[(self.df['facecolor'] == self.color_down) & (self.df['_pre'] <= self.df[self.close]), ['facecolor']] = self.color_down_up
+
+        self.facecolor_candle = self.df['facecolor'].values
+        self.edgecolor_candle = self.df['edgecolor'].values
+
+        if self.set_volumecolor:
+            # 거래량
+            self.df.loc[:, ['volumefacecolor', 'volumeedgecolor']] = (self.color_volume_up, self.color_volume_up)
+            if self.color_up != self.color_down:
+                # 전일대비 하락
+                self.df.loc[self.df[self.close] < self.df['_pre'], ['volumefacecolor', 'volumeedgecolor']] = (self.color_volume_down, self.color_volume_down)
+            if self.color_up != self.color_flat:
+                # 전일과 동일
+                self.df.loc[self.df[self.close] == self.df['_pre'], ['volumefacecolor', 'volumeedgecolor']] = (self.color_volume_flat, self.color_volume_flat)
+
+        self.facecolor_volume = self.df['volumefacecolor'].values
+        self.edgecolor_volume = self.df['volumeedgecolor'].values
+
         # 기존 legend 제거
         legends = self.ax_legend.get_legend()
         if legends: legends.remove()
 
-        self._masegment.clear(), self._macolors.clear()
-        handles, labels = ([], [])
         self._visible_ma.clear()
+
+        list_handle, list_label, list_color = ([], [], [])
+        arr = (0, 1)
         for n, i in enumerate(self.list_ma):
             try: c = self.list_macolor[n]
-            except: c = self.color_sliderline
-            self._macolors[i] = c
-            # seg = self.df['x', f'ma{i}'].values
-            seg = self.df.loc[self.df[f'ma{i}'] != np.nan, ['x', f'ma{i}']].values
-            # print(f'{seg[:5]=}')
-            self._masegment[i] = seg
+            except: c = self.color_priceline
+            list_color.append(c)
 
-            handles.append(Line2D([0, 1], [0, 1], color=c, linewidth=5, label=i))
-            labels.append(self.label_ma.format(i))
+            list_handle.append(Line2D(arr, arr, color=c, linewidth=5, label=i))
+            list_label.append(self.format_ma.format(i))
 
             self._visible_ma.add(i)
+        self.edgecolor_ma = list(reversed(list_color))
 
         # 가격이동평균선 legend 생성
-        if handles:
-            legends = self.ax_legend.legend(handles, labels, loc='lower left', ncol=10)
+        if list_handle:
+            legends = self.ax_legend.legend(
+                list_handle, list_label, loc='lower left', ncol=10,
+                facecolor=self.color_background, edgecolor=self.color_tick,
+                labelcolor=self.color_tick_label,
+            )
+            for i in legends.legend_handles: i.set_picker(5)
+        return
 
-            for i in legends.legend_handles:
-                i.set_picker(5)
+    def _get_ma_segment(self):
+        if not self.list_ma: return
+
+        # 주가 차트 가격이동평균선
+        key_ma = []
+        for i in reversed(self.list_ma):
+            key_ma.append('_x')
+            key_ma.append(f'ma{i}')
+        segment_ma = self.df[key_ma].values
+        self.segment_ma = segment_ma.reshape(segment_ma.shape[0], len(self.list_ma), 2).swapaxes(0, 1)
+        return
+
+    def _set_segments(self, index_start, index_end, simpler, set_ma):
+        indsub = index_end - index_start
+        if index_start < 0: index_start = 0
+        if index_end < 1: index_end = 1
+
+        index_end += 1
+        if indsub < self.limit_candle:
+            self._set_candle_segments(index_start, index_end)
+        elif indsub < self.limit_wick:
+            self._set_wick_segments(index_start, index_end, simpler)
+        else:
+            self._set_line_segments(index_start, index_end, simpler, set_ma)
+        return
+
+    def _set_candle_segments(self, index_start, index_end):
+        self.collection_candle.set_segments(self.segment_candle[index_start:index_end])
+        self.collection_candle.set_facecolor(self.facecolor_candle[index_start:index_end])
+        self.collection_candle.set_edgecolor(self.edgecolor_candle[index_start:index_end])
+
+        if self.volume:
+            self.collection_volume.set_segments(self.segment_volume[index_start:index_end])
+            self.collection_volume.set_linewidth(0.7)
+            self.collection_volume.set_facecolor(self.facecolor_volume[index_start:index_end])
+            self.collection_volume.set_edgecolor(self.edgecolor_volume[index_start:index_end])
+
+        self.collection_ma.set_segments(self.segment_ma[:, index_start:index_end])
+        self.collection_ma.set_edgecolor(self.edgecolor_ma)
+        return
+
+    def _set_wick_segments(self, index_start, index_end, simpler=False):
+        self.collection_candle.set_segments(self.segment_candle_wick[index_start:index_end])
+        self.collection_candle.set_facecolor([])
+        self.collection_candle.set_edgecolor(self.edgecolor_candle[index_start:index_end])
+
+        if self.volume:
+            seg = self.segment_volume_wick[index_start:index_end]
+            if simpler:
+                values = seg[:, 1, 1]
+                top_index = np.argsort(-values)[:self.limit_volume]
+                seg = seg[top_index]
+            self.collection_volume.set_segments(seg)
+            self.collection_volume.set_linewidth(1.3)
+            self.collection_volume.set_facecolor(self.facecolor_volume[index_start:index_end])
+            self.collection_volume.set_edgecolor(self.facecolor_volume[index_start:index_end])
+
+        self.collection_ma.set_segments(self.segment_ma[:, index_start:index_end])
+        self.collection_ma.set_edgecolor(self.edgecolor_ma)
+        return
+
+    def _set_line_segments(self, index_start, index_end, simpler=False, set_ma=True):
+        self.collection_candle.set_segments(self.segment_priceline[:, index_start:index_end])
+        self.collection_candle.set_facecolor([])
+        self.collection_candle.set_edgecolor(self.color_priceline)
+
+        if self.volume:
+            seg = self.segment_volume_wick[index_start:index_end]
+            if simpler:
+                values = seg[:, 1, 1]
+                top_index = np.argsort(-values)[:self.limit_volume]
+                seg = seg[top_index]
+            self.collection_volume.set_segments(seg)
+            self.collection_volume.set_linewidth(1.3)
+            self.collection_volume.set_facecolor(self.facecolor_volume[index_start:index_end])
+            self.collection_volume.set_edgecolor(self.facecolor_volume[index_start:index_end])
+
+        if not set_ma: self.collection_ma.set_segments([])
+        else:
+            self.collection_ma.set_segments(self.segment_ma[:, index_start:index_end])
+            self.collection_ma.set_edgecolor(self.edgecolor_ma)
+        return
+
+
+class EventMixin(SegmentMixin):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._connect_event()
+        return
+
+    def _connect_event(self):
+        self.figure.canvas.mpl_connect('pick_event', lambda x: self._on_pick(x))
         return
 
     def _on_pick(self, e):
         self._pick_ma_action(e)
-
-        return self._draw()
+        return
 
     def _pick_ma_action(self, e: PickEvent):
         handle = e.artist
-        if e.artist.get_alpha() == 0.2:
+        if handle.get_alpha() == 0.2:
             visible = True
             handle.set_alpha(1.0)
         else:
@@ -224,42 +410,114 @@ class CollectionMixin(DataMixin):
             handle.set_alpha(0.2)
 
         n = int(handle.get_label())
-
         if visible: self._visible_ma = {i for i in self.list_ma if i in self._visible_ma or i == n}
         else: self._visible_ma = {i for i in self._visible_ma if i != n}
 
-        self.macollection.set_segments([self._masegment[i] for i in reversed(self._masegment) if i in self._visible_ma])
-        colors = [self._macolors[i] for i in reversed(self._macolors) if i in self._visible_ma]
-        self.macollection.set_colors(colors)
+        alphas = [(1 if i in self._visible_ma else 0) for i in reversed(self.list_ma)]
+        self.collection_ma.set_alpha(alphas)
+
+        self._draw()
         return
 
     def _draw(self):
-        if self.fig.canvas is not self.canvas:
-            self.canvas = self.fig.canvas
-        self.canvas.draw()
+        self.figure.canvas.draw()
         return
 
 
-class BackgroundMixin(CollectionMixin):
-    background = None
+class DrawMixin(EventMixin):
     candle_on_ma = True
 
-    _creating_background = False
+    def set_data(self, df, sort_df=True, calc_ma=True, set_candlecolor=True, set_volumecolor=True, *args, **kwargs):
+        self._generate_data(df, sort_df, calc_ma, set_candlecolor, set_volumecolor, *args, **kwargs)
+        self._get_segments()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        vmin, vmax = self.get_default_lim()
+        self._set_lim(vmin, vmax)
         return
 
     def _connect_event(self):
         super()._connect_event()
-        self.canvas.mpl_connect('draw_event', lambda x: self._on_draw(x))
+        self.figure.canvas.mpl_connect('draw_event', lambda x: self._on_draw(x))
+        return
+
+    def _on_draw(self, e):
+        self._draw_artist()
+        self._blit()
+        return
+
+    def _draw_artist(self):
+        renderer = self.figure.canvas.renderer
+
+        self.ax_price.xaxis.draw(renderer)
+        self.ax_price.yaxis.draw(renderer)
+
+        if self.candle_on_ma:
+            self.collection_ma.draw(renderer)
+            self.collection_candle.draw(renderer)
+        else:
+            self.collection_candle.draw(renderer)
+            self.collection_ma.draw(renderer)
+
+        if self.watermark:
+            self.text_watermark.set_text(self.watermark)
+            self.text_watermark.draw(renderer)
+
+        self.ax_volume.xaxis.draw(renderer)
+        self.ax_volume.yaxis.draw(renderer)
+
+        self.collection_volume.draw(renderer)
+        return
+
+    def _blit(self):
+        self.figure.canvas.blit()
+        return
+
+    def _set_lim(self, xmin, xmax, simpler=False, set_ma=True):
+        self.vxmin, self.vxmax = (xmin, xmax + 1)
+        if xmin < 0: xmin = 0
+        if xmax < 0: xmax = 0
+        if xmin == xmax: xmax += 1
+
+        ymin, ymax = (self.df[self.low][xmin:xmax].min(), self.df[self.high][xmin:xmax].max())
+        yspace = (ymax - ymin) / 15
+        # 주가 차트 ymin, ymax
+        self.price_ymin, self.price_ymax = (ymin-yspace, ymax+yspace)
+
+        # 거래량 차트 ymax
+        self.volume_ymax = self.df['_volymax'][xmin:xmax].max() if self.volume else 1
+
+        self._set_segments(xmin, xmax, simpler, set_ma)
+        self._change_lim(self.vxmin, self.vxmax)
+        return
+
+    def _change_lim(self, xmin, xmax):
+        # 주가 차트 xlim
+        self.ax_price.set_xlim(xmin, xmax)
+        # 거래량 차트 xlim
+        self.ax_volume.set_xlim(xmin, xmax)
+
+        # 주가 차트 ylim
+        self.ax_price.set_ylim(self.price_ymin, self.price_ymax)
+        # 거래량 차트 ylim
+        self.ax_volume.set_ylim(0, self.volume_ymax)
+        return
+
+    def get_default_lim(self):
+        return (0, self.list_index[-1])
+
+
+class BackgroundMixin(DrawMixin):
+    background = None
+
+    _creating_background = False
+
+    def _connect_event(self):
+        self.figure.canvas.mpl_connect('pick_event', lambda x: self._on_pick(x))
+        self.figure.canvas.mpl_connect('draw_event', lambda x: self._on_draw(x))
         return
 
     def _create_background(self):
         if self._creating_background: return
-
-        if self.fig.canvas is not self.canvas:
-            self.canvas = self.fig.canvas
 
         self._creating_background = True
         self._copy_bbox()
@@ -268,31 +526,7 @@ class BackgroundMixin(CollectionMixin):
 
     def _copy_bbox(self):
         self._draw_artist()
-        self.background = self.canvas.renderer.copy_from_bbox(self.fig.bbox)
-        return
-
-    def _draw_artist(self):
-        renderer = self.canvas.renderer
-
-        self.ax_slider.xaxis.draw(renderer)
-        self.ax_slider.yaxis.draw(renderer)
-
-        self.slidercollection.draw(renderer)
-
-        self.ax_price.xaxis.draw(renderer)
-        self.ax_price.yaxis.draw(renderer)
-
-        if self.candle_on_ma:
-            self.macollection.draw(renderer)
-            self.candlecollection.draw(renderer)
-        else:
-            self.candlecollection.draw(renderer)
-            self.macollection.draw(renderer)
-
-        self.ax_volume.xaxis.draw(renderer)
-        self.ax_volume.yaxis.draw(renderer)
-
-        self.volumecollection.draw(renderer)
+        self.background = self.figure.canvas.renderer.copy_from_bbox(self.figure.bbox)
         return
 
     def _on_draw(self, e):
@@ -303,51 +537,27 @@ class BackgroundMixin(CollectionMixin):
     def _restore_region(self):
         if not self.background: self._create_background()
 
-        self.canvas.renderer.restore_region(self.background)
-        return
-
-class DrawMixin(BackgroundMixin):
-    def set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, *_, **kwargs):
-        self._set_data(df, sort_df, calc_ma, change_lim, **kwargs)
-        return self.df
-
-    def _set_data(self, df: pd.DataFrame, sort_df=True, calc_ma=True, change_lim=True, *_, **kwargs):
-        self._generate_data(df, sort_df, calc_ma, **kwargs)
-        self._set_collection()
-        self._draw_collection(change_lim)
-        return
-
-    def _draw_collection(self, change_lim=True):
-        xmax = self.df['x'].values[-1] + 1
-
-        xspace = xmax / 40
-        self.xmin, self.xmax = (-xspace, xmax+xspace)
-        # 슬라이더 xlim
-        self.ax_slider.set_xlim(self.xmin, self.xmax)
-        if change_lim:
-            # 주가 xlim
-            self.ax_price.set_xlim(self.xmin, self.xmax)
-            # 거래량 xlim
-            self.ax_volume.set_xlim(self.xmin, self.xmax)
-
-        ymin, ymax = (self.df[self.low].min(), self.df[self.high].max())
-        ysub = (ymax - ymin) / 15
-
-        # 슬라이더 ylim
-        self._slider_ymin, self._slider_ymax = (ymin-ysub, ymax+ysub)
-        self.ax_slider.set_ylim(self._slider_ymin, self._slider_ymax)
-
-        # 주가 ylim
-        self._price_ymin, self._price_ymax = (ymin-ysub, ymax+ysub)
-        if change_lim: self.ax_price.set_ylim(self._price_ymin, self._price_ymax)
-
-        # 거래량 ylim
-        self._vol_ymax = self.df[self.volume].max() * 1.2
-        if change_lim: self.ax_volume.set_ylim(0, self._vol_ymax)
+        self.figure.canvas.renderer.restore_region(self.background)
         return
 
 
-class Chart(DrawMixin, Mixin):
+class BaseMixin(BackgroundMixin):
+    pass
+
+
+class Chart(BaseMixin, Mixin):
+    def _add_collection(self):
+        super()._add_collection()
+        return self.add_artist()
+
+    def _draw_artist(self):
+        super()._draw_artist()
+        return self.draw_artist()
+
+    def _get_segments(self):
+        self.generate_data()
+        return super()._get_segments()
+
     def _on_draw(self, e):
         super()._on_draw(e)
         return self.on_draw(e)
@@ -356,22 +566,18 @@ class Chart(DrawMixin, Mixin):
         self.on_pick(e)
         return super()._on_pick(e)
 
+    def _set_candle_segments(self, index_start, index_end):
+        super()._set_candle_segments(index_start, index_end)
+        self.set_segment(index_start, index_end)
+        return
 
-if __name__ == '__main__':
-    import json
-    from time import time
+    def _set_wick_segments(self, index_start, index_end, simpler=False):
+        super()._set_wick_segments(index_start, index_end, simpler)
+        self.set_segment(index_start, index_end, simpler)
+        return
 
-    import matplotlib.pyplot as plt
-    from pathlib import Path
+    def _set_line_segments(self, index_start, index_end, simpler=False, set_ma=True):
+        super()._set_line_segments(index_start, index_end, simpler, set_ma)
+        self.set_segment(index_start, index_end, simpler, set_ma)
+        return
 
-    with open(Path(__file__).parent / 'data/samsung.txt', 'r', encoding='utf-8') as txt:
-        data = json.load(txt)
-    print(f'{len(data)=}')
-    # data = data[:200]
-    df = pd.DataFrame(data)
-
-    t = time()
-    DrawMixin().set_data(df)
-    t2 = time() - t
-    print(f'{t2=}')
-    plt.show()
