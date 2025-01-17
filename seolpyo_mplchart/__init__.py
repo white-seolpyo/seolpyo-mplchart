@@ -5,9 +5,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from .draw import Chart as BaseChart
-from .cursor import Chart as BaseCursorChart, format_candleinfo_ko, format_volumeinfo_ko, format_candleinfo_en, format_volumeinfo_en
-from .slider import Chart as BaseSliderChart
+from ._draw import Chart as _BaseChart
+from ._cursor import Chart as _BaseCursorChart, format_candleinfo_ko, format_volumeinfo_ko, format_candleinfo_en, format_volumeinfo_en
+from ._slider import Chart as _BaseSliderChart
 
 
 __all__ = [
@@ -24,7 +24,7 @@ path_samsung = Path(__file__).parent / 'sample/samsung.txt'
 path_apple = Path(__file__).parent / 'sample/apple.txt'
 
 def sample(stock: Literal['samsung', 'apple']='samsung', chart: Literal['Chart', 'CursorChart', 'SliderChart']='SliderChart'):
-    C: BaseSliderChart = {'Chart': BaseChart, 'CursorChart': BaseCursorChart, 'SliderChart': BaseSliderChart}[chart]()
+    C: _BaseSliderChart = {'Chart': _BaseChart, 'CursorChart': _BaseCursorChart, 'SliderChart': _BaseSliderChart}[chart]()
     path_file = path_samsung if stock == 'samsung' else path_apple
     if stock == 'samsung':
         C.format_candleinfo = format_candleinfo_ko
@@ -68,7 +68,7 @@ def close(fig='all'):
     return plt.close(fig)
 
 
-class OnlyChart(BaseChart):
+class OnlyChart(_BaseChart):
     r"""
     You can see the guidance document:
         Korean: https://white.seolpyo.com/entry/147/
@@ -129,7 +129,7 @@ class OnlyChart(BaseChart):
     pass
 
 
-class CursorChart(BaseCursorChart):
+class CursorChart(_BaseCursorChart):
     r"""
     You can see the guidance document:
         Korean: https://white.seolpyo.com/entry/147/
@@ -201,7 +201,7 @@ class CursorChart(BaseCursorChart):
     pass
 
 
-class SliderChart(BaseSliderChart):
+class SliderChart(_BaseSliderChart):
     r"""
     You can see the guidance document:
         Korean: https://white.seolpyo.com/entry/147/
@@ -272,7 +272,7 @@ class SliderChart(BaseSliderChart):
         min_distance: Minimum number of candles that can be selected with the slider. default 30
         limit_candle: Maximum number of candles to draw. default 800
         limit_wick:  Maximum number of candle wicks to draw. default 4,000
-        limit_volume: Maximum number of volume bars to draw. default 800. Applies only to drawing candle wicks or price line.
+        limit_volume: Maximum number of volume bars to draw. default 200. Applies only to drawing candle wicks or price line.
         limit_ma: If the number of displayed data is more than this, the price moving average line is not drawn. default 8,000
 
         color_navigator_line: Navigator divider color. default '#1e78ff'
@@ -303,7 +303,7 @@ def set_theme(chart: OnlyChart|CursorChart|SliderChart, theme: Literal['light', 
         chart.color_box = 'w'
         chart.textboxKwargs = {'facecolor': 'k', 'edgecolor': 'w'}
         chart.textKwargs = {'color': 'w'}
-        chart.color_navigator_cover, chart.color_navigator_line = ('w', '#00FFFF')
+        chart.color_navigator_cover, chart.color_navigator_line = ('w', '#FF2400')
 
         if initialized:
             chart.change_background_color('k')
