@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seolpyo-mplchart"
-version = "1.0.0"
+version = "1.3.0"
 dependencies  = [
   "matplotlib >= 3.7.0",
   "pandas >= 2.0.0",
