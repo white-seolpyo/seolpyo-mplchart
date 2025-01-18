@@ -56,6 +56,9 @@ class Base:
 
     unit_price, unit_volume = ('원', '주')
 
+    def draw_canvas(self): return self.figure.canvas.draw()
+    def blit_canvas(self): return self.figure.canvas.blit()
+
     def __init__(self, *args, **kwargs):
         # 기본 툴바 비활성화
         plt.rcParams['toolbar'] = 'None'

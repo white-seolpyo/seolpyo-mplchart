@@ -125,10 +125,10 @@ class CollectionMixin(PlotMixin):
 
         keys = []
         for i in reversed(self.list_ma):
-            keys.append('_x')
+            keys.append('x')
             keys.append(f'ma{i}')
 
-        segment_slider = self.df[keys + ['_x', self.close] ].values
+        segment_slider = self.df[keys + ['x', self.close] ].values
         segment_slider = segment_slider.reshape(segment_slider.shape[0], len(self.list_ma)+1, 2).swapaxes(0, 1)
         self.collection_slider.set_segments(segment_slider)
         return
@@ -186,7 +186,7 @@ class NavigatorMixin(CollectionMixin):
         # 슬라이더 텍스트 y
         self.text_slider.set_y(ymax)
 
-        self.navigator.set_linewidth([ysub, 5])
+        self.navigator.set_linewidth([ysub+ysub, 5])
 
         # 네비게이터 라인 선택 범위
         xsub = self.slider_xmax - self.slider_xmin
@@ -461,7 +461,7 @@ class ReleaseMixin(SliderSelectMixin):
         return
 
     def _on_release(self, e: MouseEvent):
-        if self.in_slider and self.is_click_slider: self._on_release_slider(e)
+        if self.in_slider and self.is_click_slider and e.button == MouseButton.LEFT: self._on_release_slider(e)
         return
 
     def _on_release_slider(self, e: MouseEvent):
@@ -481,6 +481,8 @@ class ReleaseMixin(SliderSelectMixin):
         self.is_click_slider = False
         self.is_move = False
         self.click_navleft, self.click_navright = (False, False)
+
+        self.draw_canvas()
         return
 
 
@@ -496,13 +498,13 @@ class ChartClickMixin(ReleaseMixin):
         if self.is_click_chart: return
 
         self.is_click_chart = True
-        self._x_click = e.x.__round__(2)
+        self._x_click = e.x
         self.figure.canvas.set_cursor(cursors.RESIZE_HORIZONTAL)
         return
 
     def _on_release(self, e):
-        if self.is_click_chart and (self.in_price_chart or self.in_volume_chart): self._on_release_chart(e)
-        elif self.is_click_slider and self.in_slider: self._on_release_slider(e)
+        if self.is_click_chart and (self.in_price_chart or self.in_volume_chart) and e.button == MouseButton.LEFT: self._on_release_chart(e)
+        elif self.is_click_slider and self.in_slider and e.button == MouseButton.LEFT: self._on_release_slider(e)
         return
 
     def _on_release_chart(self, e):
@@ -540,7 +542,7 @@ class ChartClickMixin(ReleaseMixin):
         return super()._on_move_volume_chart(e)
 
     def _move_chart(self, e: MouseEvent):
-        x = e.x.__round__(2)
+        x = e.x
         left, right = self.navcoordinate
         nsub = right - left
         xsub = x - self._x_click

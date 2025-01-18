@@ -103,40 +103,48 @@ class CollectionMixin(BM):
         return
 
 
-_set_key = {'rate', 'compare', 'rate_open', 'rate_high', 'rate_low', 'rate_volume', '_boxheight', '_boxmin', '_boxmax', '_volumeboxmax',}
+_set_key = {
+    'compare', 'rate',
+    'rate_open', 'rate_high', 'rate_low',
+    'compare_volume', 'rate_volume',
+    'space_box_candle',
+    'bottom_box_candle', 'top_box_candle',
+    'max_box_volume',
+}
 
 class DataMixin(CollectionMixin):
-    def _validate_column_key(self):
-        super()._validate_column_key()
-        for i in ['date', 'Open', 'high', 'low', 'close', 'volume']:
+    def _validate_column_key(self, df):
+        super()._validate_column_key(df)
+
+        for i in ('date', 'Open', 'high', 'low', 'close', 'volume'):
             v = getattr(self, i)
             if v in _set_key: raise Exception(f'you can not set "{i}" to column key.\nself.{i}={v!r}')
         return
 
-    def _generate_data(self, df, sort_df, calc_ma, set_candlecolor, set_volumecolor, calc_info, *_, **__):
+    def _generate_data(self, df: pd.DataFrame, sort_df, calc_ma, set_candlecolor, set_volumecolor, calc_info, *_, **__):
         super()._generate_data(df, sort_df, calc_ma, set_candlecolor, set_volumecolor, *_, **__)
 
         if not calc_info:
             keys = set(df.keys())
-            list_key = ['rate', 'compare', 'rate_open', 'rate_high', 'rate_low',]
-            if self.volume: list_key.append('rate_volume')
+            list_key = ['compare', 'rate', 'rate_open', 'rate_high', 'rate_low',]
+            if self.volume: list_key += ['compare_volume', 'rate_volume',]
             for i in list_key:
                 if i not in keys:
                     raise Exception(f'"{i}" column not in DataFrame.\nadd column or set calc_info=True.')
         else:
-            self.df['compare'] = (self.df[self.close] - self.df['_pre']).fillna(0)
+            self.df['compare'] = (self.df[self.close] - self.df['close_pre']).fillna(0)
             self.df['rate'] = (self.df['compare'] / self.df[self.close] * 100).__round__(2).fillna(0)
-            self.df['rate_open'] = ((self.df[self.Open] - self.df['_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
-            self.df['rate_high'] = ((self.df[self.high] - self.df['_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
-            self.df['rate_low'] = ((self.df[self.low] - self.df['_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
+            self.df['rate_open'] = ((self.df[self.Open] - self.df['close_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
+            self.df['rate_high'] = ((self.df[self.high] - self.df['close_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
+            self.df['rate_low'] = ((self.df[self.low] - self.df['close_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
             if self.volume:
                 self.df['compare_volume'] = (self.df[self.volume] - self.df[self.volume].shift(1)).fillna(0)
                 self.df['rate_volume'] = (self.df['compare_volume'] / self.df[self.volume].shift(1) * 100).__round__(2).fillna(0)
 
-        self.df['_boxheight'] = (self.df[self.high] - self.df[self.low]) / 5
-        self.df['_boxmin'] = self.df[self.low] - self.df['_boxheight']
-        self.df['_boxmax'] = self.df[self.high] + self.df['_boxheight']
-        if self.volume: self.df['_volumeboxmax'] = self.df[self.volume] * 1.13
+        self.df['space_box_candle'] = (self.df[self.high] - self.df[self.low]) / 5
+        self.df['bottom_box_candle'] = self.df[self.low] - self.df['space_box_candle']
+        self.df['top_box_candle'] = self.df[self.high] + self.df['space_box_candle']
+        if self.volume: self.df['max_box_volume'] = self.df[self.volume] * 1.13
         return
 
     def _set_lim(self, xmin, xmax, simpler=False, set_ma=True):
@@ -245,8 +253,8 @@ class LineMixin(EventMixin):
             self.text_date_volume.draw(renderer)
 
             # 캔들 강조
-            low = self.df['_boxmin'][index]
-            high = self.df['_boxmax'][index]
+            low = self.df['bottom_box_candle'][index]
+            high = self.df['top_box_candle'][index]
             sub = high - low
             if sub < self.min_candleboxheight:
                 sub = (self.min_candleboxheight - sub) / 2

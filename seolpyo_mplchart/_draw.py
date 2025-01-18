@@ -75,7 +75,7 @@ class CollectionMixin(Base):
 
     def change_tick_color(self, color):
         for ax in (self.ax_price, self.ax_volume):
-            for i in ['top', 'bottom', 'left', 'right']: ax.spines[i].set_color(self.color_tick)
+            for i in ('top', 'bottom', 'left', 'right'): ax.spines[i].set_color(self.color_tick)
             ax.tick_params(colors=color)
             ax.tick_params(colors=color)
 
@@ -95,7 +95,11 @@ class CollectionMixin(Base):
     def change_line_color(self, color): return
 
 
-_set_key = {'_x', '_left', '_right', '_volleft', '_volright', '_top', '_bottom', '_pre', '_zero', '_volymax',}
+_set_key = {
+    'x', 'zero', 'close_pre', 'ymax_volume',
+    'top_candle', 'bottom_candle', 'left_candle', 'right_candle',
+    'left_volume', 'right_volume',
+}
 
 class DataMixin(CollectionMixin):
     df: pd.DataFrame
@@ -116,11 +120,14 @@ class DataMixin(CollectionMixin):
     set_candlecolor, set_volumecolor = (True, True)
 
     def _generate_data(self, df: pd.DataFrame, sort_df, calc_ma, set_candlecolor, set_volumecolor, *_, **__):
-        self._validate_column_key()
+        self.set_candlecolor = set_candlecolor
+        self.set_volumecolor = set_volumecolor
+
+        self._validate_column_key(df)
 
         # 오름차순 정렬
         if sort_df: df = df.sort_values([self.date])
-        df = df.reset_index()
+        df = df.reset_index(drop=True)
 
         self.list_index = df.index.tolist()
         self.xmin, self.xmax = (0, self.list_index[-1])
@@ -138,42 +145,42 @@ class DataMixin(CollectionMixin):
                     if key not in set_key:
                         raise KeyError(f'"{key}" column not found.\nset calc_ma=True or add "{key}" column.')
 
-        df['_x'] = df.index + 0.5
-        df['_left'] = df['_x'] - self.candle_width_half
-        df['_right'] = df['_x'] + self.candle_width_half
-        df['_volleft'] = df['_x'] - self.volume_width_half
-        df['_volright'] = df['_x'] + self.volume_width_half
-        df.loc[:, '_zero'] = 0
+        df['x'] = df.index + 0.5
+        df['left_candle'] = df['x'] - self.candle_width_half
+        df['right_candle'] = df['x'] + self.candle_width_half
+        df['left_volume'] = df['x'] - self.volume_width_half
+        df['right_volume'] = df['x'] + self.volume_width_half
+        df.loc[:, 'zero'] = 0
 
-        df['_top'] = np.where(df[self.Open] <= df[self.close], df[self.close], df[self.Open])
-        df['_top'] = np.where(df[self.close] < df[self.Open], df[self.Open], df[self.close])
-        df['_bottom'] = np.where(df[self.Open] <= df[self.close], df[self.Open], df[self.close])
-        df['_bottom'] = np.where(df[self.close] < df[self.Open], df[self.close], df[self.Open])
+        df['top_candle'] = np.where(df[self.Open] <= df[self.close], df[self.close], df[self.Open])
+        df['top_candle'] = np.where(df[self.close] < df[self.Open], df[self.Open], df[self.close])
+        df['bottom_candle'] = np.where(df[self.Open] <= df[self.close], df[self.Open], df[self.close])
+        df['bottom_candle'] = np.where(df[self.close] < df[self.Open], df[self.close], df[self.Open])
 
-        df['_pre'] = df[self.close].shift(1)
-        if self.volume: df['_volymax'] = df[self.volume] * 1.2
-
-        if not set_candlecolor:
-            keys = set(df.keys())
-            for i in ('facecolor', 'edgecolor', 'volumefacecolor',):
-                if i not in keys:
-                    raise Exception(f'"{i}" column not in DataFrame.\nadd column or set set_candlecolor=True.')
-        self.set_candlecolor = set_candlecolor
-
-        if not set_volumecolor:
-            keys = set(df.keys())
-            for i in ('volumefacecolor', 'volumeedgecolor',):
-                if i not in keys:
-                    raise Exception(f'"{i}" column not in DataFrame.\nadd column or set set_volumecolor=True.')
-        self.set_volumecolor = set_volumecolor
+        df['close_pre'] = df[self.close].shift(1)
+        if self.volume: df['ymax_volume'] = df[self.volume] * 1.2
 
         self.df = df
         return
 
-    def _validate_column_key(self):
+    def _validate_column_key(self, df: pd.DataFrame):
         for i in ('date', 'Open', 'high', 'low', 'close', 'volume'):
             v = getattr(self, i)
             if v in _set_key: raise Exception(f'you can not set "{i}" to column key.\nself.{i}={v!r}')
+
+
+        if not self.set_candlecolor:
+            keys = set(df.keys())
+            for i in ('facecolor', 'edgecolor', 'facecolor_volume', 'edgecolor_volume',):
+                if i not in keys:
+                    raise Exception(f'"{i}" column not in DataFrame.\nadd column or set set_candlecolor=True.')
+
+        if not self.set_volumecolor:
+            keys = set(df.keys())
+            for i in ('facecolor_volume', 'edgecolor_volume',):
+                if i not in keys:
+                    raise Exception(f'"{i}" column not in DataFrame.\nadd column or set set_volumecolor=True.')
+
         return
 
 
@@ -192,46 +199,46 @@ class SegmentMixin(DataMixin):
     def _get_segments(self):
         # 캔들 세그먼트
         segment_candle = self.df[[
-            '_x', self.high,
-            '_x', '_top',
-            '_left', '_top',
-            '_left', '_bottom',
-            '_x', '_bottom',
-            '_x', self.low,
-            '_x', '_bottom',
-            '_right', '_bottom',
-            '_right', '_top',
-            '_x', '_top',
-            '_x', self.high,
-            '_x', '_top',
+            'x', self.high,
+            'x', 'top_candle',
+            'left_candle', 'top_candle',
+            'left_candle', 'bottom_candle',
+            'x', 'bottom_candle',
+            'x', self.low,
+            'x', 'bottom_candle',
+            'right_candle', 'bottom_candle',
+            'right_candle', 'top_candle',
+            'x', 'top_candle',
+            'x', self.high,
+            'x', 'top_candle',
         ]].values
         self.segment_candle = segment_candle.reshape(segment_candle.shape[0], 12, 2)
 
         # 심지 세그먼트
         segment_wick = self.df[[
-            '_x', self.high,
-            '_x', self.low,
+            'x', self.high,
+            'x', self.low,
         ]].values
         self.segment_candle_wick = segment_wick.reshape(segment_wick.shape[0], 2, 2)
 
         # 종가 세그먼트
-        segment_priceline = segment_wick = self.df[['_x', self.close]].values
+        segment_priceline = segment_wick = self.df[['x', self.close]].values
         self.segment_priceline = segment_priceline.reshape(1, *segment_wick.shape)
 
         if self.volume:
             # 거래량 바 세그먼트
             segment_volume = self.df[[
-                '_volleft', '_zero',
-                '_volleft', self.volume,
-                '_volright', self.volume,
-                '_volright', '_zero',
+                'left_volume', 'zero',
+                'left_volume', self.volume,
+                'right_volume', self.volume,
+                'right_volume', 'zero',
             ]].values
             self.segment_volume = segment_volume.reshape(segment_volume.shape[0], 4, 2)
 
             # 거래량 심지 세그먼트
             segment_volume_wick = self.df[[
-                '_x', '_zero',
-                '_x', self.volume,
+                'x', 'zero',
+                'x', self.volume,
             ]].values
             self.segment_volume_wick = segment_volume_wick.reshape(segment_volume_wick.shape[0], 2, 2)
 
@@ -251,26 +258,26 @@ class SegmentMixin(DataMixin):
                 self.df.loc[self.df[self.close] == self.df[self.Open], ['facecolor', 'edgecolor']] = (self.color_flat, self.color_flat)
             if self.color_up != self.color_up_down:
                 # 양봉(비우기)
-                self.df.loc[(self.df['facecolor'] == self.color_up) & (self.df[self.close] <= self.df['_pre']), 'facecolor'] = self.color_up_down
+                self.df.loc[(self.df['facecolor'] == self.color_up) & (self.df[self.close] <= self.df['close_pre']), 'facecolor'] = self.color_up_down
             if self.color_down != self.color_down_up:
                 # 음봉(비우기)
-                self.df.loc[(self.df['facecolor'] == self.color_down) & (self.df['_pre'] <= self.df[self.close]), ['facecolor']] = self.color_down_up
+                self.df.loc[(self.df['facecolor'] == self.color_down) & (self.df['close_pre'] <= self.df[self.close]), ['facecolor']] = self.color_down_up
 
         self.facecolor_candle = self.df['facecolor'].values
         self.edgecolor_candle = self.df['edgecolor'].values
 
         if self.set_volumecolor:
             # 거래량
-            self.df.loc[:, ['volumefacecolor', 'volumeedgecolor']] = (self.color_volume_up, self.color_volume_up)
+            self.df.loc[:, ['facecolor_volume', 'edgecolor_volume']] = (self.color_volume_up, self.color_volume_up)
             if self.color_up != self.color_down:
                 # 전일대비 하락
-                self.df.loc[self.df[self.close] < self.df['_pre'], ['volumefacecolor', 'volumeedgecolor']] = (self.color_volume_down, self.color_volume_down)
+                self.df.loc[self.df[self.close] < self.df['close_pre'], ['facecolor_volume', 'edgecolor_volume']] = (self.color_volume_down, self.color_volume_down)
             if self.color_up != self.color_flat:
                 # 전일과 동일
-                self.df.loc[self.df[self.close] == self.df['_pre'], ['volumefacecolor', 'volumeedgecolor']] = (self.color_volume_flat, self.color_volume_flat)
+                self.df.loc[self.df[self.close] == self.df['close_pre'], ['facecolor_volume', 'edgecolor_volume']] = (self.color_volume_flat, self.color_volume_flat)
 
-        self.facecolor_volume = self.df['volumefacecolor'].values
-        self.edgecolor_volume = self.df['volumeedgecolor'].values
+        self.facecolor_volume = self.df['facecolor_volume'].values
+        self.edgecolor_volume = self.df['edgecolor_volume'].values
 
         # 기존 legend 제거
         legends = self.ax_legend.get_legend()
@@ -307,7 +314,7 @@ class SegmentMixin(DataMixin):
         # 주가 차트 가격이동평균선
         key_ma = []
         for i in reversed(self.list_ma):
-            key_ma.append('_x')
+            key_ma.append('x')
             key_ma.append(f'ma{i}')
         segment_ma = self.df[key_ma].values
         self.segment_ma = segment_ma.reshape(segment_ma.shape[0], len(self.list_ma), 2).swapaxes(0, 1)
@@ -318,7 +325,7 @@ class SegmentMixin(DataMixin):
         if index_start < 0: index_start = 0
         if index_end < 1: index_end = 1
 
-        index_end += 1
+        index_end += 2
         if indsub < self.limit_candle:
             self._set_candle_segments(index_start, index_end)
         elif indsub < self.limit_wick:
@@ -492,7 +499,7 @@ class DrawMixin(EventMixin):
         self.price_ymin, self.price_ymax = (ymin-yspace, ymax+yspace)
 
         # 거래량 차트 ymax
-        self.volume_ymax = self.df['_volymax'][xmin:xmax].max() if self.volume else 1
+        self.volume_ymax = self.df['ymax_volume'][xmin:xmax].max() if self.volume else 1
 
         self._set_segments(xmin, xmax, simpler, set_ma)
         self._change_lim(self.vxmin, self.vxmax)

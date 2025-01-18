@@ -281,7 +281,7 @@ class SliderChart(_BaseSliderChart):
     pass
 
 
-def set_theme(chart: OnlyChart|CursorChart|SliderChart, theme: Literal['light', 'dark']='dark'):
+def set_theme(chart: SliderChart|CursorChart|OnlyChart, theme: Literal['light', 'dark']='dark'):
     initialized = hasattr(chart, 'ax_price')
 
     if theme == 'dark':
@@ -312,10 +312,8 @@ def set_theme(chart: OnlyChart|CursorChart|SliderChart, theme: Literal['light', 
             if hasattr(chart, 'navigator'): chart.navigator.set_edgecolor([chart.color_navigator_cover, chart.color_navigator_line])
 
             if hasattr(chart, 'df'):
-                chart.set_candlecolor, chart.set_volumecolor = (True, True)
-                chart._get_color_segment()
-                chart.figure.canvas.draw()
-
+                chart.set_data(chart.df, sort_df=False, calc_ma=False, set_candlecolor=True, set_volumecolor=True, calc_info=False, change_lim=False)
+                chart.draw_canvas()
     elif theme == 'light':
         chart.color_background = '#fafafa'
         chart.color_tick, chart.color_tick_label = ('k', 'k')
@@ -344,9 +342,8 @@ def set_theme(chart: OnlyChart|CursorChart|SliderChart, theme: Literal['light', 
             if hasattr(chart, 'navigator'): chart.navigator.set_edgecolor([chart.color_navigator_cover, chart.color_navigator_line])
 
             if hasattr(chart, 'df'):
-                chart.set_candlecolor, chart.set_volumecolor = (True, True)
-                chart._get_color_segment()
-                chart.figure.canvas.draw()
+                chart.set_data(chart.df, sort_df=False, calc_ma=False, set_candlecolor=True, set_volumecolor=True, calc_info=False, change_lim=False)
+                chart.draw_canvas()
     else: raise ValueError(f'You send wrong arg.\n{theme=}')
 
     return chart
