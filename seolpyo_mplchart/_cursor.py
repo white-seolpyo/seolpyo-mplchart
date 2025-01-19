@@ -440,7 +440,7 @@ class InfoMixin(LineMixin):
             text = self.format_volumeinfo.format(
                 dt=dt,
                 volume=f'{v:>{self._length_text}}{self.unit_volume}',
-                rate_volume=f'{vr:>{self._length_text}}%',
+                rate_volume=f'{vr:>{self._length_text}}',
                 compare=f'{com:>{self._length_text}}{self.unit_volume}',
             )
         else: text = ''
