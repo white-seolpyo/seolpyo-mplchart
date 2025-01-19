@@ -374,14 +374,13 @@ class InfoMixin(LineMixin):
 
     def _get_info(self, index, is_price=True):
         dt = self.df[self.date][index]
-        if not self.volume:
-            v, vr = ('-', '-%')
+        if not self.volume: v, vr = ('-', '-')
         else:
             v = self.df[self.volume][index]
             v = float_to_str(v, self.digit_volume)
             # if not v % 1: v = int(v)
             vr = self.df['rate_volume'][index]
-            vr = f'{vr:+06,.2f}%'
+            vr = f'{vr:+06,.2f}'
 
         if is_price:
             o, h, l, c = (self.df[self.Open][index], self.df[self.high][index], self.df[self.low][index], self.df[self.close][index])
@@ -418,7 +417,7 @@ class InfoMixin(LineMixin):
                     open=f'{o:>{self._length_text}}{self.unit_price}', rate_open=f'{Or:+06,.2f}%',
                     high=f'{h:>{self._length_text}}{self.unit_price}', rate_high=f'{hr:+06,.2f}%',
                     low=f'{l:>{self._length_text}}{self.unit_price}', rate_low=f'{lr:+06,.2f}%',
-                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=vr,
+                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=f'{vr}%',
                 )
             else:
                 o, h, l, c = (float_to_str(o, self.digit_price), float_to_str(h, self.digit_price), float_to_str(l, self.digit_price), float_to_str(c, self.digit_price))
@@ -432,7 +431,7 @@ class InfoMixin(LineMixin):
                     open=f'{o:>{self._length_text}}{self.unit_price}', rate_open=f'{Or:+06,.2f}%',
                     high=f'{h:>{self._length_text}}{self.unit_price}', rate_high=f'{hr:+06,.2f}%',
                     low=f'{l:>{self._length_text}}{self.unit_price}', rate_low=f'{lr:+06,.2f}%',
-                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=vr,
+                    volume=f'{v:>{self._length_text}}{self.unit_volume}', rate_volume=f'{vr}%',
                 )
         elif self.volume:
             compare = self.df['compare_volume'][index]
@@ -440,10 +439,11 @@ class InfoMixin(LineMixin):
             text = self.format_volumeinfo.format(
                 dt=dt,
                 volume=f'{v:>{self._length_text}}{self.unit_volume}',
-                rate_volume=f'{vr:>{self._length_text}}',
+                rate_volume=f'{vr:>{self._length_text}}%',
                 compare=f'{com:>{self._length_text}}{self.unit_volume}',
             )
         else: text = ''
+        
         return text
 
 
