@@ -491,6 +491,7 @@ class DrawMixin(EventMixin):
         self.vxmin, self.vxmax = (xmin, xmax + 1)
         if xmin < 0: xmin = 0
         if xmax < 0: xmax = 0
+        xmax += 1
         if xmin == xmax: xmax += 1
 
         ymin, ymax = (self.df[self.low][xmin:xmax].min(), self.df[self.high][xmin:xmax].max())

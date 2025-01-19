@@ -365,12 +365,10 @@ class ClickMixin(MouseMoveMixin):
         return
 
     def _on_click(self, e: MouseEvent):
-        if self.in_slider: self._on_click_slider(e)
+        if self.in_slider and not self.is_click_slider and e.button == MouseButton.LEFT: self._on_click_slider(e)
         return
 
     def _on_click_slider(self, e: MouseEvent):
-        if self.is_click_slider or e.button != MouseButton.LEFT: return
-
         self.background_with_nav_pre = self.background_with_nav
 
         self.is_click_slider = True
@@ -490,13 +488,15 @@ class ChartClickMixin(ReleaseMixin):
     is_click_chart = False
 
     def _on_click(self, e: MouseEvent):
-        if self.in_price_chart or self.in_volume_chart: self._on_click_chart(e)
-        elif self.in_slider: self._on_click_slider(e)
+        if (
+            (self.in_price_chart or self.in_volume_chart)
+            and not self.is_click_chart
+            and e.button == MouseButton.LEFT
+        ): self._on_click_chart(e)
+        elif self.in_slider and not self.is_click_slider and e.button == MouseButton.LEFT: self._on_click_slider(e)
         return
 
     def _on_click_chart(self, e: MouseEvent):
-        if self.is_click_chart: return
-
         self.is_click_chart = True
         self._x_click = e.x
         self.figure.canvas.set_cursor(cursors.RESIZE_HORIZONTAL)
