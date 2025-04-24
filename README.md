@@ -5,9 +5,9 @@ Ethereum: 0x1c5fb8a5e0b1153cd4116c91736bd16fabf83520
 
 
 # Document
-[English Document](https://white.seolpyo.com/entry/148/)
+[English Document](https://white.seolpyo.com/entry/148/?from=pypi)
 
-[한글 설명서](https://white.seolpyo.com/entry/147/)
+[한글 설명서](https://white.seolpyo.com/entry/147/?from=pypi)
 
 
 # Sample Image
@@ -23,6 +23,8 @@ Ethereum: 0x1c5fb8a5e0b1153cd4116c91736bd16fabf83520
 ## Korean format sample
 ![korean sample](https://raw.githubusercontent.com/white-seolpyo/seolpyo-mplchart/refs/heads/main/images/sample%20kor.png)
 
+## change Candle shape sample
+![Candle shape sample](https://raw.githubusercontent.com/white-seolpyo/seolpyo-mplchart/refs/heads/main/images/change%20candle%20segment.png)
 
 # 40,000 data sample
 ![40,000 sample](https://raw.githubusercontent.com/white-seolpyo/seolpyo-mplchart/refs/heads/main/images/40000.gif)
