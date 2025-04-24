@@ -297,19 +297,19 @@ def set_theme(chart: SliderChart|CursorChart|OnlyChart, theme: Literal['light', 
         chart.color_volume_up, chart.color_volume_down = ('#32CD32', '#FF4500')
         chart.color_volume_flat = 'w'
 
-        chart.list_macolor = ('#FFFF00', '#7FFF00', '#00FFFF', '#FFA07A', '#FF00FF')
+        chart.list_macolor = ('#1E90FF', '#FFA500', '#FF1493', '#FFFF00', '#00CED1')
 
         chart.lineKwargs = {'edgecolor': 'w'}
         chart.color_box = 'w'
         chart.textboxKwargs = {'facecolor': 'k', 'edgecolor': 'w'}
         chart.textKwargs = {'color': 'w'}
-        chart.color_navigator_cover, chart.color_navigator_line = ('w', '#FF2400')
+        chart.color_navigator_cover, chart.color_navigator_line = ('k', '#FF2400')
 
         if initialized:
             chart.change_background_color('k')
             chart.change_tick_color('w')
             chart.change_line_color('w')
-            if hasattr(chart, 'navigator'): chart.navigator.set_edgecolor([chart.color_navigator_cover, chart.color_navigator_line])
+            if hasattr(chart, 'navigator'): chart.collection_navigator.set_edgecolor([chart.color_navigator_cover, chart.color_navigator_line])
 
             if hasattr(chart, 'df'):
                 chart.set_data(chart.df, sort_df=False, calc_ma=False, set_candlecolor=True, set_volumecolor=True, calc_info=False, change_lim=False)
@@ -324,22 +324,22 @@ def set_theme(chart: SliderChart|CursorChart|OnlyChart, theme: Literal['light', 
         chart.color_flat = 'k'
         chart.color_up_down, chart.color_down_up = ('w', 'w')
 
-        chart.color_volume_up, chart.color_volume_down = ('#FF4D4D', '#5CA8F4')
-        chart.color_volume_flat = '#A9A9A9'
+        chart.color_volume_up, chart.color_volume_down = ('#FF6666', '#5CA8F4')
+        chart.color_volume_flat = '#808080'
 
-        chart.list_macolor = ('#B22222', '#228B22', '#1E90FF', '#FF8C00', '#4B0082')
+        chart.list_macolor = ('#006400', '#8B008B', '#FFA500', '#0000FF', '#FF0000')
 
         chart.lineKwargs = {'edgecolor': 'k'}
         chart.color_box = 'k'
         chart.textboxKwargs = {'facecolor': 'w', 'edgecolor': 'k'}
         chart.textKwargs = {'color': 'k'}
-        chart.color_navigator_cover, chart.color_navigator_line = ('k', '#1e78ff')
+        chart.color_navigator_cover, chart.color_navigator_line = ('k', '#1E78FF')
 
         if initialized:
             chart.change_background_color('#fafafa')
             chart.change_tick_color('k')
             chart.change_line_color('k')
-            if hasattr(chart, 'navigator'): chart.navigator.set_edgecolor([chart.color_navigator_cover, chart.color_navigator_line])
+            if hasattr(chart, 'navigator'): chart.collection_navigator.set_edgecolor([chart.color_navigator_cover, chart.color_navigator_line])
 
             if hasattr(chart, 'df'):
                 chart.set_data(chart.df, sort_df=False, calc_ma=False, set_candlecolor=True, set_volumecolor=True, calc_info=False, change_lim=False)

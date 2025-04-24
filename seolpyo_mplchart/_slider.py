@@ -3,7 +3,6 @@ from matplotlib.axes import Axes
 from matplotlib.collections import LineCollection
 from matplotlib.text import Text
 from matplotlib.backend_bases import MouseEvent, MouseButton, cursors
-import pandas as pd
 
 from ._base import convert_unit
 from ._cursor import BaseMixin as BM, Mixin as M
@@ -90,7 +89,7 @@ class PlotMixin(BM):
 
 class CollectionMixin(PlotMixin):
     min_distance = 30
-    color_navigator_line = '#1e78ff'
+    color_navigator_line = '#1E78FF'
     color_navigator_cover = 'k'
 
     def _add_collection(self):
@@ -100,15 +99,15 @@ class CollectionMixin(PlotMixin):
         self.ax_slider.add_artist(self.collection_slider)
 
         # 슬라이더 네비게이터
-        self.navigator = LineCollection([], animated=True, edgecolors=[self.color_navigator_cover, self.color_navigator_line], alpha=(0.3, 1.0))
-        self.ax_slider.add_artist(self.navigator)
+        self.collection_navigator = LineCollection([], animated=True, edgecolors=[self.color_navigator_cover, self.color_navigator_line], alpha=(0.3, 1.0))
+        self.ax_slider.add_artist(self.collection_navigator)
 
         lineKwargs = {'edgecolor': 'k', 'linewidth': 1, 'linestyle': '-'}
         lineKwargs.update(self.lineKwargs)
         lineKwargs.update({'segments': [], 'animated': True})
 
-        self.slider_vline = LineCollection(**lineKwargs)
-        self.ax_slider.add_artist(self.slider_vline)
+        self.collection_slider_vline = LineCollection(**lineKwargs)
+        self.ax_slider.add_artist(self.collection_slider_vline)
 
         textboxKwargs = {'boxstyle': 'round', 'facecolor': 'w'}
         textboxKwargs.update(self.textboxKwargs)
@@ -116,13 +115,17 @@ class CollectionMixin(PlotMixin):
         textKwargs.update({'animated': True, 'bbox': textboxKwargs, 'horizontalalignment': '', 'verticalalignment': ''})
         (textKwargs.pop('horizontalalignment'), textKwargs.pop('verticalalignment'))
 
-        self.text_slider = Text(**textKwargs, horizontalalignment='center', verticalalignment='top')
-        self.ax_slider.add_artist(self.text_slider)
+        self.artist_text_slider = Text(**textKwargs, horizontalalignment='center', verticalalignment='top')
+        self.ax_slider.add_artist(self.artist_text_slider)
         return
 
-    def _get_segments(self):
-        super()._get_segments()
+    def _create_segments(self):
+        super()._create_segments()
 
+        self._create_slider_segment()
+        return
+
+    def _create_slider_segment(self):
         keys = []
         for i in reversed(self.list_ma):
             keys.append('x')
@@ -131,11 +134,13 @@ class CollectionMixin(PlotMixin):
         segment_slider = self.df[keys + ['x', self.close] ].values
         segment_slider = segment_slider.reshape(segment_slider.shape[0], len(self.list_ma)+1, 2).swapaxes(0, 1)
         self.collection_slider.set_segments(segment_slider)
+        linewidth = [1 for _ in self.list_ma]
+        self.collection_slider.set_linewidth(linewidth + [2.1])
+
+        self._create_slider_color_segments()
         return
 
-    def _get_color_segment(self):
-        super()._get_color_segment()
-
+    def _create_slider_color_segments(self):
         self.collection_slider.set_edgecolor(self.edgecolor_ma + [self.color_priceline])
         return
 
@@ -143,7 +148,7 @@ class CollectionMixin(PlotMixin):
         super().change_background_color(color)
 
         self.ax_slider.set_facecolor(color)
-        self.text_slider.set_backgroundcolor(color)
+        self.artist_text_slider.set_backgroundcolor(color)
         return
 
     def change_tick_color(self, color):
@@ -156,14 +161,14 @@ class CollectionMixin(PlotMixin):
     def change_text_color(self, color):
         super().change_text_color(color)
 
-        self.text_slider.set_color(color)
+        self.artist_text_slider.set_color(color)
         return
 
     def change_line_color(self, color):
         super().change_line_color(color)
 
-        self.text_slider.get_bbox_patch().set_edgecolor(color)
-        self.slider_vline.set_edgecolor(color)
+        self.artist_text_slider.get_bbox_patch().set_edgecolor(color)
+        self.collection_slider_vline.set_edgecolor(color)
         return
 
 
@@ -172,7 +177,7 @@ class NavigatorMixin(CollectionMixin):
         xmax = self.list_index[-1]
         # 슬라이더 xlim
         xdistance = xmax / 30
-        self.slider_xmin, self.slider_xmax = (-xdistance, xmax + xdistance)
+        self.slider_xmin, self.slider_xmax = (-xdistance, xmax+xdistance)
         self.ax_slider.set_xlim(self.slider_xmin, self.slider_xmax)
 
         # 슬라이더 ylim
@@ -184,9 +189,9 @@ class NavigatorMixin(CollectionMixin):
         self.ax_slider.set_ylim(self.slider_ymin, self.slider_ymax)
 
         # 슬라이더 텍스트 y
-        self.text_slider.set_y(ymax)
+        self.artist_text_slider.set_y(ymax)
 
-        self.navigator.set_linewidth([ysub+ysub, 5])
+        self.collection_navigator.set_linewidth([ysub+ysub, 5])
 
         # 네비게이터 라인 선택 범위
         xsub = self.slider_xmax - self.slider_xmin
@@ -196,50 +201,51 @@ class NavigatorMixin(CollectionMixin):
         return
 
     def _set_navigator(self, navmin, navmax):
-        navseg = [
+        seg = [
             (
                 (self.slider_xmin, self.sldier_ymiddle),
-                (navmin, self.sldier_ymiddle)
+                (navmin, self.sldier_ymiddle),
             ),
             (
                 (navmin, self.slider_ymin),
-                (navmin, self.slider_ymax)
+                (navmin, self.slider_ymax),
             ),
             (
                 (navmax, self.sldier_ymiddle),
-                (self.slider_xmax, self.sldier_ymiddle)
+                (self.slider_xmax, self.sldier_ymiddle),
             ),
             (
                 (navmax, self.slider_ymin),
-                (navmax, self.slider_ymax)
+                (navmax, self.slider_ymax),
             ),
         ]
 
-        self.navigator.set_segments(navseg)
+        self.collection_navigator.set_segments(seg)
         return
 
 
 class DataMixin(NavigatorMixin):
-    navcoordinate = (0, 0)
+    navcoordinate: tuple[int, int] = (0, 0)
 
     def set_data(self, df, sort_df=True, calc_ma=True, set_candlecolor=True, set_volumecolor=True, calc_info=True, change_lim=True, *args, **kwargs):
         self._generate_data(df, sort_df, calc_ma, set_candlecolor, set_volumecolor, calc_info, *args, **kwargs)
-        self._get_segments()
-
+        self._create_segments()
+        
         vmin, vmax = self.navcoordinate
         if change_lim or (vmax-vmin) < self.min_distance:
             vmin, vmax = self.get_default_lim()
-            self.navcoordinate = (vmin, vmax)
+            self.navcoordinate = (vmin, vmax-1)
+        else: vmax += 1
 
         self._set_lim(vmin, vmax)
         self._set_slider_lim()
-        self._set_navigator(vmin, vmax)
+        self._set_navigator(*self.navcoordinate)
 
-        self._length_text = self.df[(self.volume if self.volume else self.high)].apply(lambda x: len(str(x))).max()
+        self._set_length_text()
         return
 
     def get_default_lim(self):
-        xmax = self.list_index[-1]
+        xmax = self.list_index[-1] + 1
         xmin = xmax - 120
         if xmin < 0: xmin = 0
         return (xmin, xmax)
@@ -257,16 +263,17 @@ class BackgroundMixin(DataMixin):
         self._draw_artist()
         self.background = renderer.copy_from_bbox(self.figure.bbox)
 
-        self.navigator.draw(self.figure.canvas.renderer)
+        self.collection_navigator.draw(self.figure.canvas.renderer)
         self.background_with_nav = renderer.copy_from_bbox(self.figure.bbox)
         return
 
     def _restore_region(self, is_empty=False, with_nav=True):
         if not self.background: self._create_background()
 
-        if is_empty: self.figure.canvas.renderer.restore_region(self.background_emtpy)
-        elif with_nav: self.figure.canvas.renderer.restore_region(self.background_with_nav)
-        else: self.figure.canvas.renderer.restore_region(self.background)
+        restore_region = self.figure.canvas.renderer.restore_region
+        if is_empty: restore_region(self.background_emtpy)
+        elif with_nav: restore_region(self.background_with_nav)
+        else: restore_region(self.background)
         return
 
 
@@ -274,19 +281,31 @@ class MouseMoveMixin(BackgroundMixin):
     in_slider = False
     is_click_slider = False
 
+    def _erase_crossline(self):
+        boolen = super()._erase_crossline()
+        if boolen: return boolen
+
+        seg = self.collection_slider_vline.get_segments()
+        if seg:
+            self.collection_slider_vline.set_segments([])
+            return True
+        return False
+
     def _on_move(self, e):
         self._on_move_action(e)
 
-        self._restore_region((self.is_click_slider and self.in_slider))
-
         if self.in_slider:
+            self._restore_region(self.is_click_slider)
             self._on_move_slider(e)
-        elif self.in_price_chart:
-            self._on_move_price_chart(e)
-        elif self.in_volume_chart:
-            self._on_move_volume_chart(e)
-
-        self._blit()
+            self.figure.canvas.blit()
+        elif self.in_price_chart or self.in_volume_chart:
+            self._restore_region()
+            self._draw_crossline(e, self.in_price_chart)
+            self.figure.canvas.blit()
+        else:
+            if self._erase_crossline():
+                self._restore_region()
+                self.figure.canvas.blit()
         return
 
     def _on_move_action(self, e: MouseEvent):
@@ -323,34 +342,41 @@ class MouseMoveMixin(BackgroundMixin):
         if not ax or e.xdata is None or e.ydata is None:
             self.in_slider, self.in_price_chart, self.in_volume_chart = (False, False, False)
         else:
-            self.in_slider = ax is self.ax_slider
-            self.in_price_chart = False if self.in_slider else ax is self.ax_price
-            self.in_volume_chart = False if (self.in_slider or self.in_price_chart) else ax is self.ax_volume
+            if ax is self.ax_slider:
+                self.in_slider = True
+                self.in_price_chart = False
+                self.in_volume_chart = False
+            elif ax is self.ax_price:
+                self.in_slider = False
+                self.in_price_chart = True
+                self.in_volume_chart = False
+            elif ax is self.ax_volume:
+                self.in_slider = False
+                self.in_price_chart = False
+                self.in_volume_chart = True
+            else:
+                self.in_slider = False
+                self.in_price_chart = False
+                self.in_volume_chart = False
         return
 
     def _on_move_slider(self, e: MouseEvent):
         x = e.xdata
-
         if self.intx is not None:
             renderer = self.figure.canvas.renderer
-            self.slider_vline.set_segments([((x, self.slider_ymin), (x, self.slider_ymax))])
-            self.slider_vline.draw(renderer)
+            self.collection_slider_vline.set_segments([((x, self.slider_ymin), (x, self.slider_ymax))])
+            self.collection_slider_vline.draw(renderer)
 
             if self.in_slider:
-                self.text_slider.set_text(f'{self.df[self.date][self.intx]}')
-                self.text_slider.set_x(x)
-                self.text_slider.draw(renderer)
+                self.artist_text_slider.set_text(f'{self.df[self.date][self.intx]}')
+                self.artist_text_slider.set_x(x)
+                self.artist_text_slider.draw(renderer)
         return
 
-    def _on_move_price_chart(self, e: MouseEvent):
-        self.slider_vline.set_segments([((e.xdata, self.slider_ymin), (e.xdata, self.slider_ymax))])
-        self.slider_vline.draw(self.figure.canvas.renderer)
-        return super()._on_move_price_chart(e)
-
-    def _on_move_volume_chart(self, e: MouseEvent):
-        self.slider_vline.set_segments([((e.xdata, self.slider_ymin), (e.xdata, self.slider_ymax))])
-        self.slider_vline.draw(self.figure.canvas.renderer)
-        return super()._on_move_volume_chart(e)
+    def _draw_crossline(self, e: MouseEvent, in_price_chart):
+        self.collection_slider_vline.set_segments([((e.xdata, self.slider_ymin), (e.xdata, self.slider_ymax))])
+        self.collection_slider_vline.draw(self.figure.canvas.renderer)
+        return super()._draw_crossline(e, in_price_chart)
 
 
 class ClickMixin(MouseMoveMixin):
@@ -377,14 +403,16 @@ class ClickMixin(MouseMoveMixin):
         x = e.xdata.__int__()
         navmin, navmax = self.navcoordinate
         
-        leftmin, leftmax = (navmin-self._navLineWidth, navmin+self._navLineWidth_half)
-        rightmin, rightmax = (navmax-self._navLineWidth_half, navmax+self._navLineWidth)
+        leftmax = navmin+self._navLineWidth_half
+        rightmin = navmax-self._navLineWidth_half
 
         grater_than_left, less_then_right = (leftmax < x, x < rightmin)
         if grater_than_left and less_then_right:
             self.is_move = True
             self.x_click = x
         else:
+            leftmin = navmin - self._navLineWidth
+            rightmax = navmax+self._navLineWidth
             if not grater_than_left and leftmin <= x:
                 self.click_navleft = True
                 self.x_click = navmax
@@ -404,9 +432,9 @@ class SliderSelectMixin(ClickMixin):
         return super()._on_move_slider(e)
 
     def _set_navcoordinate(self, e: MouseEvent):
-        x = e.xdata.__int__()
         navmin, navmax = self.navcoordinate
 
+        x = e.xdata.__int__()
         if self.is_move:
             xsub = self.x_click - x
             navmin, navmax = (navmin-xsub, navmax-xsub)
@@ -418,32 +446,32 @@ class SliderSelectMixin(ClickMixin):
             self.navcoordinate = (navmin, navmax)
             self.x_click = x
 
-            self._set_lim(navmin, navmax, simpler=True, set_ma=(navmax-navmin < self.limit_ma))
+            self._set_lim(navmin, navmax+1, simpler=True, set_ma=(navmax-navmin < self.limit_ma))
 
             self._set_navigator(navmin, navmax)
-            self.navigator.draw(self.figure.canvas.renderer)
+            self.collection_navigator.draw(self.figure.canvas.renderer)
 
             self._draw_artist()
             self.background_with_nav = self.figure.canvas.renderer.copy_from_bbox(self.figure.bbox)
-            self._restore_region(False, True)
+            self._restore_region()
         else:
             navmin, navmax = (x, self.x_click) if x < self.x_click else (self.x_click, x)
 
             # 슬라이더가 차트를 벗어나지 않도록 선택 영역 제한
             if navmax < 0 or self.list_index[-1] < navmin:
-                seg = self.navigator.get_segments()
+                seg = self.collection_navigator.get_segments()
                 navmin, navmax = (int(seg[1][0][0]), int(seg[3][0][0]))
 
             nsub = navmax - navmin
             if nsub < self.min_distance:
                 self._restore_region(False, False)
                 self._set_navigator(navmin, navmax)
-                self.navigator.draw(self.figure.canvas.renderer)
+                self.collection_navigator.draw(self.figure.canvas.renderer)
             else:
-                self._set_lim(navmin, navmax, simpler=True, set_ma=(nsub < self.limit_ma))
+                self._set_lim(navmin, navmax+1, simpler=True, set_ma=(nsub < self.limit_ma))
                 self._set_navigator(navmin, navmax)
 
-                self.navigator.draw(self.figure.canvas.renderer)
+                self.collection_navigator.draw(self.figure.canvas.renderer)
 
                 self._draw_artist()
                 self.background_with_nav = self.figure.canvas.renderer.copy_from_bbox(self.figure.bbox)
@@ -464,23 +492,23 @@ class ReleaseMixin(SliderSelectMixin):
 
     def _on_release_slider(self, e: MouseEvent):
         if not self.is_move:
-            seg = self.navigator.get_segments()
+            seg = self.collection_navigator.get_segments()
             navmin, navmax = (int(seg[1][0][0]), int(seg[3][0][0]))
             nsub = navmax - navmin
             if self.min_distance <= nsub: self.navcoordinate = (navmin, navmax)
             else:
                 self.background_with_nav = self.background_with_nav_pre
                 navmin, navmax = self.navcoordinate
-                self._set_lim(navmin, navmax, simpler=True, set_ma=(nsub < self.limit_ma))
+                self._set_lim(navmin, navmax+1, simpler=True, set_ma=(nsub < self.limit_ma))
                 self._restore_region(False, True)
-                self._blit()
+                self.figure.canvas.blit()
             self._set_navigator(*self.navcoordinate)
 
         self.is_click_slider = False
         self.is_move = False
         self.click_navleft, self.click_navright = (False, False)
 
-        self.draw_canvas()
+        self.figure.canvas.draw()
         return
 
 
@@ -488,23 +516,30 @@ class ChartClickMixin(ReleaseMixin):
     is_click_chart = False
 
     def _on_click(self, e: MouseEvent):
-        if (
-            (self.in_price_chart or self.in_volume_chart)
-            and not self.is_click_chart
-            and e.button == MouseButton.LEFT
-        ): self._on_click_chart(e)
-        elif self.in_slider and not self.is_click_slider and e.button == MouseButton.LEFT: self._on_click_slider(e)
+        if e.button == MouseButton.LEFT:
+            if (
+                not self.is_click_chart
+                and (self.in_price_chart or self.in_volume_chart)
+            ): self._on_click_chart(e)
+            elif not self.is_click_slider and self.in_slider:
+                self._on_click_slider(e)
         return
 
     def _on_click_chart(self, e: MouseEvent):
         self.is_click_chart = True
-        self._x_click = e.x
+        x = e.xdata.__int__()
+        self.x_click = x - self.navcoordinate[0]
         self.figure.canvas.set_cursor(cursors.RESIZE_HORIZONTAL)
         return
 
     def _on_release(self, e):
-        if self.is_click_chart and (self.in_price_chart or self.in_volume_chart) and e.button == MouseButton.LEFT: self._on_release_chart(e)
-        elif self.is_click_slider and self.in_slider and e.button == MouseButton.LEFT: self._on_release_slider(e)
+        if e.button ==  MouseButton.LEFT:
+            if (
+                self.is_click_chart
+                and (self.in_price_chart or self.in_volume_chart)
+            ): self._on_release_chart(e)
+            elif self.is_click_slider and self.in_slider:
+                self._on_release_slider(e)
         return
 
     def _on_release_chart(self, e):
@@ -519,50 +554,42 @@ class ChartClickMixin(ReleaseMixin):
     def _on_move(self, e):
         self._on_move_action(e)
 
-        need_slider_action = self.is_click_slider and self.in_slider
-        need_chart_action = False if need_slider_action else self.is_click_chart and (self.in_price_chart or self.in_volume_chart)
-        self._restore_region((need_slider_action or need_chart_action))
-
         if self.in_slider:
+            self._restore_region(self.is_click_slider)
             self._on_move_slider(e)
-        elif self.in_price_chart:
-            self._on_move_price_chart(e)
-        elif self.in_volume_chart:
-            self._on_move_volume_chart(e)
-
-        self._blit()
+            self.figure.canvas.blit()
+        elif self.in_price_chart or self.in_volume_chart:
+            self._restore_region(self.is_click_chart)
+            if not self.is_click_chart:
+                self._draw_crossline(e, self.in_price_chart)
+            else: self._move_chart(e)
+            self.figure.canvas.blit()
+        else:
+            if self._erase_crossline():
+                self._restore_region()
+                self.figure.canvas.blit()
         return
 
-    def _on_move_price_chart(self, e):
-        if self.is_click_chart: self._move_chart(e)
-        return super()._on_move_price_chart(e)
-
-    def _on_move_volume_chart(self, e):
-        if self.is_click_chart: self._move_chart(e)
-        return super()._on_move_volume_chart(e)
-
     def _move_chart(self, e: MouseEvent):
-        x = e.x
         left, right = self.navcoordinate
-        nsub = right - left
-        xsub = x - self._x_click
-        xdiv = (xsub / (1200 / nsub)).__int__()
-        if not xdiv:
-            self.navigator.draw(self.figure.canvas.renderer)
+        x = e.xdata.__int__() - left
+        xsub = x - self.x_click
+        if not xsub:
+            self.collection_navigator.draw(self.figure.canvas.renderer)
             self._draw_artist()
         else:
-            left, right = (left-xdiv, right-xdiv)
-            if right < 0 or self.df.index[-1] < left: self._restore_region(False, True)
+            left, right = (left-xsub, right-xsub)
+            if right < 0 or self.df.index[-1] < left: self._restore_region()
             else:
+                self.x_click = x
                 self.navcoordinate = (left, right)
-                self._set_lim(left, right, simpler=True, set_ma=((right-left) < self.limit_ma))
+                self._set_lim(left, right+1, simpler=True, set_ma=((right-left) < self.limit_ma))
                 self._set_navigator(left, right)
-                self.navigator.draw(self.figure.canvas.renderer)
+                self.collection_navigator.draw(self.figure.canvas.renderer)
 
                 self._draw_artist()
                 self.background_with_nav = self.figure.canvas.renderer.copy_from_bbox(self.figure.bbox)
-                self._restore_region(False, True)
-            self._x_click = x
+                self._restore_region()
         return
 
 
@@ -571,17 +598,13 @@ class BaseMixin(ChartClickMixin):
 
 
 class Chart(BaseMixin, Mixin):
-    def _add_collection(self):
-        super()._add_collection()
-        return self.add_artist()
-
     def _draw_artist(self):
         super()._draw_artist()
         return self.draw_artist()
 
-    def _get_segments(self):
-        self.generate_data()
-        return super()._get_segments()
+    def _set_lim(self, xmin, xmax, simpler=False, set_ma=True):
+        super()._set_lim(xmin, xmax, simpler, set_ma)
+        return self.on_change_xlim(xmin, xmax, simpler, set_ma)
 
     def _on_draw(self, e):
         super()._on_draw(e)
@@ -590,21 +613,6 @@ class Chart(BaseMixin, Mixin):
     def _on_pick(self, e):
         self.on_pick(e)
         return super()._on_pick(e)
-
-    def _set_candle_segments(self, index_start, index_end):
-        super()._set_candle_segments(index_start, index_end)
-        self.set_segment(index_start, index_end)
-        return
-
-    def _set_wick_segments(self, index_start, index_end, simpler=False):
-        super()._set_wick_segments(index_start, index_end, simpler)
-        self.set_segment(index_start, index_end, simpler)
-        return
-
-    def _set_line_segments(self, index_start, index_end, simpler=False, set_ma=True):
-        super()._set_line_segments(index_start, index_end, simpler, set_ma)
-        self.set_segment(index_start, index_end, simpler, set_ma)
-        return
 
     def _on_move(self, e):
         super()._on_move(e)
