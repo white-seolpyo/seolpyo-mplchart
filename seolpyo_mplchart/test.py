@@ -63,7 +63,7 @@ path_file = Path(__file__).parent / 'sample/samsung.txt'
 
 with open(path_file, 'r', encoding='utf-8') as txt:
     data = json.load(txt)
-df = pd.DataFrame(data)
+df = pd.DataFrame(data[:20])
 
 C.set_data(df)
 

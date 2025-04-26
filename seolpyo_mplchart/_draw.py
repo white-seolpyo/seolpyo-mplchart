@@ -251,18 +251,11 @@ class CandleSegmentMixin(DataMixin):
             tuple[tuple[float, float]]: candle segment
         """
         return (
-            (x, high),
-            (x, top),
-            (left, top),
-            (left, bottom),
-            (x, bottom),
-            (x, low),
-            (x, bottom),
-            (right, bottom),
-            (right, top),
-            (x, top),
-            (x, high),
-            (x, top),
+            (x, high), (x, top),
+            (left, top), (left, bottom),
+            (x, bottom), (x, low), (x, bottom),
+            (right, bottom), (right, top),
+            (x, top), (x, high), (x, top),
         )
 
     def _create_candle_segments(self):
@@ -278,8 +271,7 @@ class CandleSegmentMixin(DataMixin):
             segment_candle.append(
                 self.get_candle_segment(
                     is_up=is_up,
-                    x=x,
-                    left=left, right=right,
+                    x=x, left=left, right=right,
                     top=top, bottom=bottom,
                     high=high, low=low,
                 )
@@ -419,11 +411,9 @@ class VolumeSegmentMixin(MaSegmentMixin):
             tuple[tuple[float, float]]: volume bar segment
         """
         return (
-            (left, top),
-            (left, 0),
-            (right, 0),
-            (right, top),
-            (left, top),
+            (left, top), (left, 0),
+            (right, 0), (right, top),
+            (left, top), (left, 0),
         )
 
     def _create_volume_segments(self):

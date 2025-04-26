@@ -327,13 +327,16 @@ class MouseMoveMixin(BackgroundMixin):
         navleft, navright = self.navcoordinate
         if navleft == navright: return
 
-        x = e.xdata
-        leftmin, leftmax = (navleft-self._navLineWidth, navleft+self._navLineWidth_half)
-        rightmin, rightmax = (navright-self._navLineWidth_half, navright+self._navLineWidth)
+        x = e.xdata.__round__()
+
+        leftmin = navleft - self._navLineWidth
+        leftmax = navleft + self._navLineWidth_half
+        rightmin = navright - self._navLineWidth_half
+        rightmax = navright + self._navLineWidth
         if x < leftmin: self.figure.canvas.set_cursor(cursors.POINTER)
-        elif x < leftmax: self.figure.canvas.set_cursor(cursors.RESIZE_HORIZONTAL)
+        elif x <= leftmax: self.figure.canvas.set_cursor(cursors.RESIZE_HORIZONTAL)
         elif x < rightmin: self.figure.canvas.set_cursor(cursors.MOVE)
-        elif x < rightmax: self.figure.canvas.set_cursor(cursors.RESIZE_HORIZONTAL)
+        elif x <= rightmax: self.figure.canvas.set_cursor(cursors.RESIZE_HORIZONTAL)
         else: self.figure.canvas.set_cursor(cursors.POINTER)
         return
 
@@ -400,25 +403,26 @@ class ClickMixin(MouseMoveMixin):
         self.is_click_slider = True
         self.figure.canvas.set_cursor(cursors.RESIZE_HORIZONTAL)
 
-        x = e.xdata.__int__()
-        navmin, navmax = self.navcoordinate
+        navleft, navright = self.navcoordinate
+        x = e.xdata.__round__()
         
-        leftmax = navmin+self._navLineWidth_half
-        rightmin = navmax-self._navLineWidth_half
+        leftmax = navleft + self._navLineWidth_half
+        rightmin = navright - self._navLineWidth_half
 
-        grater_than_left, less_then_right = (leftmax < x, x < rightmin)
+        grater_than_left = leftmax < x
+        less_then_right = x < rightmin
         if grater_than_left and less_then_right:
             self.is_move = True
             self.x_click = x
         else:
-            leftmin = navmin - self._navLineWidth
-            rightmax = navmax+self._navLineWidth
+            leftmin = navleft - self._navLineWidth
+            rightmax = navright + self._navLineWidth
             if not grater_than_left and leftmin <= x:
                 self.click_navleft = True
-                self.x_click = navmax
+                self.x_click = navright
             elif not less_then_right and x <= rightmax:
                 self.click_navright = True
-                self.x_click = navmin
+                self.x_click = navleft
             else:
                 self.x_click = x
         return

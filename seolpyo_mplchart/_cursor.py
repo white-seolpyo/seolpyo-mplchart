@@ -105,7 +105,7 @@ class CollectionMixin(BM):
 _set_key = {
     'compare', 'rate',
     'rate_open', 'rate_high', 'rate_low',
-    'compare_volume', 'rate_volume',
+    'volume_pre', 'compare_volume', 'rate_volume',
     'space_box_candle',
     'bottom_box_candle', 'top_box_candle',
     'max_box_volume',
@@ -136,13 +136,14 @@ class DataMixin(CollectionMixin):
                     raise Exception(f'"{i}" column not in DataFrame.\nadd column or set calc_info=True.')
         else:
             self.df['compare'] = (self.df[self.close] - self.df['close_pre']).fillna(0)
-            self.df['rate'] = (self.df['compare'] / self.df[self.close] * 100).__round__(2).fillna(0)
-            self.df['rate_open'] = ((self.df[self.Open] - self.df['close_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
-            self.df['rate_high'] = ((self.df[self.high] - self.df['close_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
-            self.df['rate_low'] = ((self.df[self.low] - self.df['close_pre']) / self.df[self.close] * 100).__round__(2).fillna(0)
+            self.df['rate'] = (self.df['compare'] * 100 / self.df['close_pre']).__round__(2).fillna(0)
+            self.df['rate_open'] = ((self.df[self.Open] - self.df['close_pre']) * 100 / self.df['close_pre']).__round__(2).fillna(0)
+            self.df['rate_high'] = ((self.df[self.high] - self.df['close_pre']) * 100 / self.df['close_pre']).__round__(2).fillna(0)
+            self.df['rate_low'] = ((self.df[self.low] - self.df['close_pre']) * 100 / self.df['close_pre']).__round__(2).fillna(0)
             if self.volume:
-                self.df['compare_volume'] = (self.df[self.volume] - self.df[self.volume].shift(1)).fillna(0)
-                self.df['rate_volume'] = (self.df['compare_volume'] / self.df[self.volume].shift(1) * 100).__round__(2).fillna(0)
+                self.df['volume_pre'] = self.df[self.volume].shift(1)
+                self.df['compare_volume'] = (self.df[self.volume] - self.df['volume_pre']).fillna(0)
+                self.df['rate_volume'] = (self.df['compare_volume'] * 100 / self.df['volume_pre']).__round__(2).fillna(0)
 
         self.df['space_box_candle'] = (self.df[self.high] - self.df[self.low]) / 5
         self.df['bottom_box_candle'] = self.df[self.low] - self.df['space_box_candle']
