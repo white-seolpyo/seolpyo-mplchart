@@ -13,7 +13,7 @@ import seolpyo_mplchart as mc
 class Chart(mc.SliderChart):
     format_candleinfo = mc.format_candleinfo_ko + '\nCustom info: {ci}'
     format_volumeinfo = mc.format_volumeinfo_ko
-    min_distance = 5
+    min_distance = 2
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -26,30 +26,20 @@ class Chart(mc.SliderChart):
             kwargs['close'] = 'You can Change close price info.'
         return kwargs
 
-    def get_candle_segment(self, *, x, left, right, top, bottom, is_up, high, low):
+    def get_candle_segm1ent(self, *, x, left, right, top, bottom, is_up, high, low):
         if is_up:
             return (
+                (x, top), (right, top), (x, top),
                 (x, high),
-                (x, top),
-                (right, top),
-                (x, top),
-                (x, bottom),
-                (left, bottom),
-                (x, bottom),
                 (x, low),
-                (x, high)
+                (x, bottom), (left, bottom), (x, bottom),
             )
         else:
             return (
+                (x, bottom), (right, bottom), (x, bottom),
                 (x, high),
-                (x, bottom),
-                (right, bottom),
-                (x, bottom),
-                (x, top),
-                (left, top),
-                (x, top),
                 (x, low),
-                (x, high)
+                (x, top), (left, top), (x, top),
             )
 
 

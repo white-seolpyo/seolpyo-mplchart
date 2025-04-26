@@ -131,7 +131,9 @@ class CollectionMixin(PlotMixin):
             keys.append('x')
             keys.append(f'ma{i}')
 
-        segment_slider = self.df[keys + ['x', self.close] ].values
+        series = self.df[keys + ['x', self.close]]
+        series['x'] = series['x'] - 0.5
+        segment_slider = series.values
         segment_slider = segment_slider.reshape(segment_slider.shape[0], len(self.list_ma)+1, 2).swapaxes(0, 1)
         self.collection_slider.set_segments(segment_slider)
         linewidth = [1 for _ in self.list_ma]
@@ -405,7 +407,7 @@ class ClickMixin(MouseMoveMixin):
 
         navleft, navright = self.navcoordinate
         x = e.xdata.__round__()
-        
+
         leftmax = navleft + self._navLineWidth_half
         rightmin = navright - self._navLineWidth_half
 
