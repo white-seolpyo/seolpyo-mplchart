@@ -152,12 +152,14 @@ If it exceeds the value, a line chart is drawn instead.
 If the number of candlesticks drawn on the screen is less than or equal to self.limit_wick, the entire volume data is rendered.
 If it exceeds that value, only a subset of volume data is drawn — specifically, the top limit_volume entries sorted in descending order of volume.
 If you experience buffering when moving across a wide range, lowering this value may help improve performance.
+This only applies while the chart is being moved in the Slider chart.
 
 
 #### limit\_ma
 
 If the number of candlesticks drawn on the screen is less than or equal to this value, the moving average line is rendered.
 If you experience buffering when navigating across a wide range, lowering this value may help improve performance.
+This only applies while the chart is being moved in the Slider chart.
 
 
 #### key\_date, key\_open, key\_high, key\_low, key\_close, key\_volume
@@ -681,3 +683,4 @@ Note: ratio_ax_none is only used when the value of slider_top is set to False.
             self.RATIO: RatioData = RATIO
     
     FIGURE = SliderFigureData()
+
