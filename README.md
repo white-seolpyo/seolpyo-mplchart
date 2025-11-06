@@ -43,7 +43,7 @@ While libraries like finplot and plotly are commonly used to draw candlestick ch
 
 You can check out a sample of drawing candlestick charts integrated with tkinter at the following link:
 
-[View tkinter sample code](https://white.seolpyo.com//entry/214/)
+[View tkinter sample code](https://white.seolpyo.com/entry/214/)
 
 ![](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/images/with%20tkinter.gif?raw=true)
 
@@ -683,4 +683,5 @@ Note: ratio_ax_none is only used when the value of slider_top is set to False.
             self.RATIO: RatioData = RATIO
     
     FIGURE = SliderFigureData()
+
 
