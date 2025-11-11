@@ -7,7 +7,7 @@ Ethereum: 0x1c5fb8a5e0b1153cd4116c91736bd16fabf83520
 # Document
 [English Document](https://github.com/white-seolpyo/seolpyo-mplchart/tree/maind)
 
-[한글 설명서](https://white.seolpyo.com/entry/147/?from=github)
+[한글 설명서](https://white.seolpyo.com/entry/147/?from=pypi)
 
 
 # This document was originally written in Korean and translated using a machine translation tool.
@@ -23,7 +23,7 @@ Package Introduction
 
 ![](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/images/candle.png?raw=true)![](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/images/40000.gif?raw=true)
 
-Sample Charts with Over 40,000 Stock Price Data Points
+Sample Charts with Over 40,000 Stock Price Data Points, with Intel i5 4690
 
 seolpyo-mplchart is a Python package built on top of matplotlib.
 
