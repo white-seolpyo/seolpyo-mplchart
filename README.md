@@ -256,12 +256,13 @@ Determines whether the mouse cursor is located within the volume chart area.
 
 Creates a chart object.
 
-#### Chart.set\_data(df)
+#### Chart.set_data(df, change_xlim=True)
 
 Passes stock price data to the chart object.
 The chart object generates chart data based on the received input.
 When retrieving data from a DataFrame, the predefined keys — Chart.key\_date, Chart.key\_open, Chart.key\_high, Chart.key\_low, Chart.key\_close, and Chart.key\_volume — are used.
 Therefore, these keys should be properly set before calling set\_data.
+`if change_lim is True`, it retrieves the values from Chart.get_default_lim() and updates the xlim accordingly.
 
 
 
