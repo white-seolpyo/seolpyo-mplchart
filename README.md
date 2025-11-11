@@ -395,8 +395,8 @@ Predefined keyword arguments are passed via **kwargs.
     
         def get_info_kwargs(self, is_price, **kwargs):
             if is_price:
-                kwargs['ci'] = 'You can add Custom text Info or Change text info.'
-                kwargs['close'] = 'You can Change close price info.'
+                kwargs['ci'] = 'this is custom add info kwargs'
+                kwargs['close'] = 'Cusotom close value'
             return kwargs
     
     C = Chart()
