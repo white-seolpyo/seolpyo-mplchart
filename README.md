@@ -5,9 +5,9 @@ Ethereum: 0x1c5fb8a5e0b1153cd4116c91736bd16fabf83520
 
 
 # Document
-[English Document](https://github.com/white-seolpyo/seolpyo-mplchart/tree/maind)
+[English Document](https://github.com/white-seolpyo/seolpyo-mplchart/tree/main)
 
-[한글 설명서](https://white.seolpyo.com/entry/147/?from=pypi)
+[한글 설명서](https://white.seolpyo.com/entry/147/?from=github)
 
 
 # This document was originally written in Korean and translated using a machine translation tool.
@@ -689,3 +689,4 @@ Note: ratio_ax_none is only used when the value of slider_top is set to False.
             self.RATIO: RatioData = RATIO
     
     FIGURE = SliderFigureData()
+
