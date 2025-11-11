@@ -5,7 +5,7 @@ Ethereum: 0x1c5fb8a5e0b1153cd4116c91736bd16fabf83520
 
 
 # Document
-[English Document](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/README.md)
+[English Document](https://github.com/white-seolpyo/seolpyo-mplchart/tree/maind)
 
 [한글 설명서](https://white.seolpyo.com/entry/147/?from=github)
 
@@ -16,7 +16,7 @@ Ethereum: 0x1c5fb8a5e0b1153cd4116c91736bd16fabf83520
 reference version
 ----
 
-2.0.0
+2.1.0
 
 Package Introduction
 ------
@@ -117,10 +117,10 @@ If not provided, the predefined CONFIG\* settings will be used.
 \* CONFIG: mc.DEFAULTCONFIG(OnlyChart, CursorChart) 또는 mc.SLIDERCONFIG(SliderChart)
 
 
-#### wartermark
+#### watermark
 
 Watermark text displayed at the center of the chart.
-If if not self.wartermark evaluates to true, the watermark will not be rendered.
+If if not self.watermark evaluates to true, the watermark will not be rendered.
 
 
 #### candle\_on\_ma
@@ -154,13 +154,11 @@ If it exceeds that value, only a subset of volume data is drawn — specifically
 If you experience buffering when moving across a wide range, lowering this value may help improve performance.
 This only applies while the chart is being moved in the Slider chart.
 
-
 #### limit\_ma
 
 If the number of candlesticks drawn on the screen is less than or equal to this value, the moving average line is rendered.
 If you experience buffering when navigating across a wide range, lowering this value may help improve performance.
 This only applies while the chart is being moved in the Slider chart.
-
 
 #### key\_date, key\_open, key\_high, key\_low, key\_close, key\_volume
 
@@ -265,6 +263,11 @@ The chart object generates chart data based on the received input.
 When retrieving data from a DataFrame, the predefined keys — Chart.key\_date, Chart.key\_open, Chart.key\_high, Chart.key\_low, Chart.key\_close, and Chart.key\_volume — are used.
 Therefore, these keys should be properly set before calling set\_data.
 
+
+
+#### Chart.get_default_xlim()
+
+It retrieves the xlim values set when Chart.set_data() is called.
 
 #### Chart.refresh()
 
@@ -403,6 +406,8 @@ Predefined keyword arguments are passed via **kwargs.
     
     mc.show()
 
+![](https://github.com/white-seolpyo/seolpyo-mplchart/blob/main/images/change%20text%20info.png?raw=true)
+
 #### Chart.on\_draw(e)
 
 Method called when the draw event is triggered.
@@ -462,7 +467,7 @@ CONFIG applied to SliderChart.
 
 CONFIG applied to SliderChart, with the price unit set to $, the volume unit set to Vol, and the formatting based on English conventions.
 
-
+```
     # seolpyo_mplchart/_config/slider/config.py
     
     from .. import config
@@ -488,9 +493,9 @@ CONFIG applied to SliderChart, with the price unit set to $, the volume unit set
     SLIDERCONFIG_EN: SliderConfigData = config.DEFAULTCONFIG_EN
     SLIDERCONFIG_EN.FIGURE = FIGURE
     SLIDERCONFIG_EN.SLIDER = SLIDER
-    
-    
+```
 
+```
     # seolpyo_mplchart/_config/config.py
     
     from . import figure, ax, candle, volume, ma, unit, cursor, format
@@ -513,7 +518,7 @@ CONFIG applied to SliderChart, with the price unit set to $, the volume unit set
     DEFAULTCONFIG_EN.UNIT = unit.UNIT_EN
     DEFAULTCONFIG_EN.MA = ma.MA_EN
     DEFAULTCONFIG_EN.FORMAT = format.FORMAT_EN
-    
+```
     
 
 # Others
@@ -683,5 +688,3 @@ Note: ratio_ax_none is only used when the value of slider_top is set to False.
             self.RATIO: RatioData = RATIO
     
     FIGURE = SliderFigureData()
-
-
