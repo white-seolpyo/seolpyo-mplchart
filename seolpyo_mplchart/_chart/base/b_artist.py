@@ -60,7 +60,6 @@ class CollectionMixin:
         self.collection_volume.set_facecolor(facecolors)
         self.collection_volume.set_edgecolor(edgecolors)
         self.collection_volume.set_transform(self.ax_volume.transData)
-        self.collection_volume.set_antialiased(False)
         return
 
 

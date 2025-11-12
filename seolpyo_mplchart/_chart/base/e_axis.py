@@ -124,7 +124,6 @@ class CandleMixin(Base):
         self.collection_candle.set_facecolor(self.facecolor_candle[ind_start:ind_end])
         self.collection_candle.set_edgecolor(self.edgecolor_candle[ind_start:ind_end])
         self.collection_candle.set_linewidth(self.CONFIG.CANDLE.linewidth)
-        self.collection_candle.set_antialiased(False)
         return
 
     def _set_candle_collection_wick_segments(self, ind_start, ind_end):
@@ -133,7 +132,6 @@ class CandleMixin(Base):
         self.collection_candle.set_facecolor([])
         self.collection_candle.set_edgecolor(self.edgecolor_candle[ind_start:ind_end])
         self.collection_candle.set_linewidth(self.CONFIG.CANDLE.linewidth * 1.5)
-        self.collection_candle.set_antialiased(False)
         return
 
     def set_candle_collection_priceline_segments(self, ind_start, ind_end):
@@ -141,7 +139,6 @@ class CandleMixin(Base):
         self.collection_candle.set_facecolor([])
         self.collection_candle.set_edgecolor(self.CONFIG.CANDLE.line_color)
         self.collection_candle.set_linewidth(2)
-        self.collection_candle.set_antialiased(True)
         return
 
 
