@@ -22,10 +22,11 @@ CANDLEEDGECOLOR = CandleEdgeColorData()
 class CandleData:
     def __init__(self):
         self.half_width = 0.24
-        self.linewidth = 0.4
+        self.linewidth = 0.8
         self.line_color: str|tuple[float, float, float, float] = 'k'
         self.FACECOLOR = CANDLEFACECOLOR
         self.EDGECOLOR = CANDLEEDGECOLOR
 
 CANDLE = CandleData()
+
 
