@@ -346,24 +346,8 @@ This method is provided to modify the appearance of candlesticks drawn on the ch
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.collection_candle.set_linewidth(1.5)
+            self.get_candle_segment = self.get_bar_segment
             return
-    
-        def get_candle_segment(self, *, x, left, right, top, bottom, is_up, high, low):
-            if is_up:
-                return (
-                    (x, high),
-                    (x, top), (right, top), (x, top),
-                    (x, bottom), (left, bottom),
-                    (x, bottom), (x, low), (x, high)
-                )
-            else:
-                return (
-                    (x, high),
-                    (x, bottom), (right, bottom), (x, bottom),
-                    (x, top), (left, top), (x, top),
-                    (x, low), (x, high)
-                )
-    
     
     C = Chart()
     
@@ -675,7 +659,6 @@ Note: ratio_ax_none is only used when the value of slider_top is set to False.
     
     class RatioData:
         def __init__(self):
-            self.legend = 2
             self.price = 18
             self.volume = 5
             self.slider = 3
@@ -689,4 +672,5 @@ Note: ratio_ax_none is only used when the value of slider_top is set to False.
             self.RATIO: RatioData = RATIO
     
     FIGURE = SliderFigureData()
+
 
