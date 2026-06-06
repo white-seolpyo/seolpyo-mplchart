@@ -22,7 +22,7 @@ class Mamixin:
     ma_format_en = 'ma {}'
 
     _visible_ma = set()
-    ma_legend_handles: dict[Artist, Artist] = {}
+    legends_dict: dict[Artist, tuple[Line2D, Text]] = {}
 
     def get_ma_legend_handles(self):
         item_list: list[Line2D] = []
@@ -49,7 +49,7 @@ class Mamixin:
         handles = self.get_ma_legend_handles()
 
         # 가격이동평균선 legend 생성
-        self.ma_legend_handles.clear()
+        self.legends_dict.clear()
         if handles:
             # 핸들에서 라벨 꺼내기
             labels = [handle.get_label() for handle in handles]
@@ -60,8 +60,8 @@ class Mamixin:
                 labelcolor=self.STYLE.CHART.fontcolor,
             )
             for handle, text in zip(legend.legend_handles, legend.get_texts()):
-                self.ma_legend_handles[handle] = handle
-                self.ma_legend_handles[text] = handle
+                self.legends_dict[handle] = (handle, text)
+                self.legends_dict[text] = (handle, text)
 
                 # set pick event
                 handle.set_picker(5)
@@ -77,7 +77,7 @@ class Mamixin:
         return
 
     def _ma_pick_action(self, e: PickEvent):
-        handle: Line2D = self.ma_legend_handles[e.artist]
+        handle, text = self.legends_dict[e.artist]
         label = handle.get_label()
         for ma in self.ma_list:
             ma_label = self.ma_format.format(ma)
@@ -88,8 +88,10 @@ class Mamixin:
             return
         # print(f'{label=}')
 
-        visible = handle.get_alpha() == 0.2
-        handle.set_alpha(1.0 if visible else 0.2)
+        legend_alpha = handle.get_alpha()
+        visible = legend_alpha and legend_alpha < 0.9
+        handle.set_alpha((1.0 if visible else 0.2))
+        text.set_alpha(alpha = (1.0 if visible else 0.5))
 
         if visible:
             self._visible_ma = {i for i in self.ma_list if i in self._visible_ma or i == ma}
