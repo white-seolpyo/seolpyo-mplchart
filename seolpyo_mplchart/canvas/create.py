@@ -1,9 +1,13 @@
+from time import time
+
 import matplotlib.pyplot as plt
 
 from ..models import Figure, AxData
 
 
 class FigureMixin:
+    figure = None
+
     def get_ax_config_list(self) -> list[AxData]:
         return [
         {
@@ -58,12 +62,19 @@ class FigureMixin:
         return (14, 7)
 
     def create_figure(self):
+        if self.figure:
+            raise
+
         ax_config_list = self.get_ax_config_list()
         ax_count = len(ax_config_list) + 2
+
+        # 복수 실행시 독립 figure 가져오기
+        unique_id = int(time() * 1000)
 
         self.figure, *_ = plt.subplots(
             ax_count, # row 수
             figsize=self.get_default_figsize(), # 기본 크기
+            num=unique_id,
         )
         for ax, ax_config in zip(self.figure.axes, ax_config_list):
             ax.set_label(ax_config['name'])
