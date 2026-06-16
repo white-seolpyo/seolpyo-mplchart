@@ -128,11 +128,11 @@ class Chart(
         return
 
     def _set_length_text(self):
-        func = lambda x: len(self.FORMATTER.price_formatter(round(x, self.digit_price), None))
+        func = lambda x: len(self.FORMATTER.info_price_formatter(round(x, self.digit_price), None))
         self._length_text = self.df['high'].apply(func).max()
 
         if self.key_volume:
-            func = lambda x: len(self.FORMATTER.volume_formatter(round(x, self.digit_volume), None))
+            func = lambda x: len(self.FORMATTER.info_volume_formatter(round(x, self.digit_volume), None))
             lenth_volume = self.df['volume'].apply(func).max()
             # print(f'{self._length_text=}')
             # print(f'{lenth_volume=}')
